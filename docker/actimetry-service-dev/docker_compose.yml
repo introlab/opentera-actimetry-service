@@ -75,22 +75,22 @@ services:
       - cache
       - db
 
-  # actimetry-service:
-  #   build:
-  #     context: ../../
-  #     dockerfile: ./docker/actimetry-service-dev/actimetry-service/Dockerfile
-  #   image: actimetry-service
-  #   restart: always
-  #   volumes:
-  #     - ./actimetry-service/ActimetryService.json:/actimetry-service/ActimetryService.json
-  #     - ../../:/actimetry-service
-  #   ports:
-  #   # Debugpy port (default port)
-  #   - '5678:5678'
-  #   networks:
-  #     - app-network
-  #   depends_on:
-  #     - opentera-server
+  actimetry-service:
+    build:
+      context: ../../
+      dockerfile: ./docker/actimetry-service-dev/actimetry-service/Dockerfile
+    image: actimetry-service
+    restart: always
+    volumes:
+      - ./actimetry-service/ActimetryService.json:/actimetry-service/ActimetryService.json
+      - ../../:/actimetry-service
+    ports:
+    # Debugpy port (default port)
+    - '5678:5678'
+    networks:
+      - app-network
+    depends_on:
+      - opentera-server
 
 volumes:
   db:

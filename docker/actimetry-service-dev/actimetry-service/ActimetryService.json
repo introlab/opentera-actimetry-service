@@ -1,0 +1,29 @@
+{
+  "Service": {
+    "name": "ActimetryService",
+    "hostname": "actimetry-service",
+    "port": 4088,
+    "debug_mode": true
+  },
+  "Backend": {
+    "hostname": "proxy",
+    "port": 40075
+  },
+  "Redis": {
+    "hostname": "cache",
+    "port": 6379,
+    "db": 0,
+    "username": "",
+    "password": ""
+  },
+  "Database": {
+    "db_type": "QPSQL",
+    "name": "actimetry",
+    "url": "db",
+    "port": 5432,
+    "username": "teraagent",
+    "password": "tera"
+  },
+  "ActimetryService": {
+  }
+}
