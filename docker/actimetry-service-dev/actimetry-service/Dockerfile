@@ -1,12 +1,10 @@
-# Must be ubuntu, since opentera-webrtc requires ubuntu to download pre-compiled binaries
 FROM ubuntu:24.04
 # Change default shell to bash
 SHELL ["/bin/bash", "--login", "-c"]
 
 # Install build dependencies
 RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
-	build-essential git sudo vim libprotobuf-dev protobuf-compiler locales wget curl \
-    libopencv-dev rsync libx11-dev libexpat1-dev software-properties-common cmake
+	build-essential git sudo vim  locales wget curl cmake
 
 # Set system locale
 RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
@@ -23,12 +21,6 @@ RUN bash ./Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3
 
 # Copy requirements file (does not change often)
 ADD ./requirements.txt requirements.txt
-
-
-# Install latest npm / nodejs
-RUN curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh
-RUN bash nodesource_setup.sh
-RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
 
 # Create conda venv in local directory outside of sources
 RUN $HOME/miniconda3/bin/conda create -c conda-forge -y --copy -n actimetry-env python=3.11
@@ -52,8 +44,9 @@ WORKDIR /actimetry-service
 ENV PYTHONPATH=/actimetry-service
 ENV PYTHON3_EXEC=/root/miniconda3/envs/actimetry-env/bin/python3
 
-# Will keep the container running and copy js files and update translations.
+# Will keep the container running and update translations.
 CMD ["/bin/sh", "-c", "./docker_dev_setup.sh; trap exit 1 INT; while true; do sleep 1; done"]
+
 
 # The service will restart until DB is configured...
 # CMD ["/bin/bash", "-c", "./docker_dev_setup.sh; $PYTHON3_EXEC tools/create_actimetry_service.py; $PYTHON3_EXEC -m debugpy --listen 0.0.0.0:5678 actimetryService.py"]
