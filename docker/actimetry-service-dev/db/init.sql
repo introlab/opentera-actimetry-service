@@ -1,0 +1,11 @@
+create user TeraAgent with encrypted password 'tera';
+create database opentera;
+grant all privileges on database opentera to TeraAgent;
+create database openteralogs;
+grant all privileges on database openteralogs to TeraAgent;
+create database openterafiles;
+grant all privileges on database openterafiles to TeraAgent;
+create database surveyjs;
+grant all privileges on database surveyjs to TeraAgent;
+create database openteraemails;
+grant all privileges on database openteraemails to TeraAgent;

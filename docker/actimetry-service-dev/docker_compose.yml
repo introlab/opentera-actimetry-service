@@ -1,0 +1,115 @@
+#Name not working on older docker versions
+#name: actimetry-service-dev
+services:
+  db:
+    image: postgres:14.1-alpine
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - '5433:5432'
+    volumes:
+      - db:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/create_tables.sql
+    networks:
+      - app-network
+
+  cache:
+    image: redis:6.2-alpine
+    restart: always
+    ports:
+      - '6380:6379'
+    command: redis-server --save 20 1 --loglevel warning
+    volumes:
+      - cache:/data
+    networks:
+      - app-network
+
+  cert-generator:
+    build:
+      context: ./
+      dockerfile: ./certificates/Dockerfile
+    image: opentera-cert-generator
+    volumes:
+      - certificates:/opentera/teraserver/python/config/certificates
+
+  proxy:
+    image: nginx
+    restart: always
+    volumes:
+      - ./nginx/opentera.conf:/etc/nginx/opentera.conf
+      - ./nginx/opentera-actimetry-service.conf:/etc/nginx/opentera-actimetry-service.conf
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - certificates:/etc/certificates
+      - nginx-logs:/etc/nginx/logs
+    depends_on:
+      - cert-generator
+    ports:
+      - '40075:40075'
+    networks:
+      - app-network
+
+  opentera-server:
+    build:
+      context: ../../
+      dockerfile: ./docker/actimetry-service-dev/teraserver/Dockerfile
+    image: opentera-server
+    restart: always
+    volumes:
+      - ./teraserver/TeraServerConfig.ini:/root/opentera/teraserver/python/config/TeraServerConfig.ini
+      - ./teraserver/FileTransferService.json:/root/opentera/teraserver/python/services/FileTransferService/FileTransferService.json
+      - ./teraserver/LoggingService.json:/root/opentera/teraserver/python/services/LoggingService/LoggingService.json
+      - ./teraserver/VideoRehabService.json:/root/opentera/teraserver/python/services/VideoRehabService/VideoRehabService.json
+      - ./teraserver/EmailService.json:/root/opentera/teraserver/python/services/EmailService/EmailService.json
+      - files:/root/opentera/teraserver/python/services/FileTransferService/files
+      - certificates:/root/opentera/teraserver/python/config/certificates
+    ports:
+    # Debugpy port
+    - '5679:5679'
+    networks:
+      - app-network
+    depends_on:
+      - cert-generator
+      - proxy
+      - cache
+      - db
+
+  # actimetry-service:
+  #   build:
+  #     context: ../../
+  #     dockerfile: ./docker/actimetry-service-dev/actimetry-service/Dockerfile
+  #   image: actimetry-service
+  #   restart: always
+  #   volumes:
+  #     - ./actimetry-service/ActimetryService.json:/actimetry-service/ActimetryService.json
+  #     - ../../:/actimetry-service
+  #   ports:
+  #   # Debugpy port (default port)
+  #   - '5678:5678'
+  #   networks:
+  #     - app-network
+  #   depends_on:
+  #     - opentera-server
+
+volumes:
+  db:
+    driver: local
+
+  cache:
+    driver: local
+
+  certificates:
+    driver: local
+
+  nginx-logs:
+    driver: local
+
+  opentera-config:
+    driver: local
+
+  files:
+    driver: local
+
+networks:
+  app-network:
