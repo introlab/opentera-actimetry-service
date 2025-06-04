@@ -90,7 +90,10 @@ class ActimetryService(ServiceOpenTeraWithAssets):
         print("ActimetryService - notify_service_message", pattern, channel, message)
 
     def asset_event_received(self, event: messages.DatabaseEvent):
-        pass
+        if event.object_type == "asset":
+            if event.type == messages.DatabaseEvent.DB_DELETE:
+                asset_info = json.loads(event.object_value)
+                # TODO Do something with the asset deletion from local database
 
 
 if __name__ == "__main__":

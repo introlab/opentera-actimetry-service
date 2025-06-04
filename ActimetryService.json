@@ -25,7 +25,7 @@
         "password": "tera"
     },
     "ActimetryService": {
-        "temp_directory": "/tmp/actimetry",
+        "temp_directory": "files/tmp",
         "files_directory": "files"
     }
 }
