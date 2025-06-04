@@ -70,7 +70,11 @@ class FakeFlaskModule(BaseModule):
     def setup_fake_actimetry_service_api(self, flask_app):
         with flask_app.app_context():
             # Setup Fake Service API
-            additional_args = {"test": True, "service": self.service}
+            additional_args = {
+                "test": True,
+                "service": self.service,
+                "flask_module": self,
+            }
             FlaskModule.init_api(self.service, self, self.api_ns, additional_args)
 
 
