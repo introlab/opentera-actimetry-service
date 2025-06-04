@@ -4,7 +4,6 @@ from flask_restx import Resource
 
 
 from FlaskModule import service_api_ns as api
-from FlaskModule import flask_app
 import Globals as Globals
 
 
