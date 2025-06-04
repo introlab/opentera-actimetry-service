@@ -29,7 +29,7 @@ user_jti_generator = infinite_jti_sequence()
 participant_jti_generator = infinite_jti_sequence()
 
 
-class BaseSurveyJSServiceAPITest(unittest.TestCase):
+class BaseActimetryServiceAPITest(unittest.TestCase):
     test_endpoint = ""
 
     @classmethod
