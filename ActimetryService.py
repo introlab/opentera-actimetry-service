@@ -1,6 +1,7 @@
 import argparse
 import sys
 import json
+import os
 
 # SQLAlchemy
 from sqlalchemy.exc import OperationalError
@@ -25,7 +26,6 @@ from ConfigManager import ConfigManager
 from libactimetry.db.DBManager import DBManager
 
 
-
 class ActimetryService(ServiceOpenTeraWithAssets):
     def __init__(self, config_man: ConfigManager, this_service_info):
         ServiceOpenTeraWithAssets.__init__(self, config_man, this_service_info)
@@ -36,30 +36,77 @@ class ActimetryService(ServiceOpenTeraWithAssets):
         # Create twisted service
         self.flaskModuleService = self.flaskModule.create_service()
 
+        # Get upload and temp directories (will create them if they do not exist)
+        self.upload_directory = self.verify_file_upload_directory(config_man)
+        self.temp_directory = self.verify_temp_directory(config_man)
+
         self.init_service()
+
+    def verify_file_upload_directory(
+        self, config_man: ConfigManager, create: bool = True
+    ) -> str:
+        """
+        Verify that the file upload directory exists and is writable.
+        If not, create it.
+        """
+        file_upload_directory = config_man.actimetry_service_config.get(
+            "files_directory", None
+        )
+        if not file_upload_directory:
+            raise ValueError("File upload directory is not set in configuration.")
+
+        if not os.path.exists(file_upload_directory):
+            if create:
+                os.makedirs(file_upload_directory)
+            else:
+                raise ValueError("File upload directory does not exist.")
+        if not os.access(file_upload_directory, os.W_OK):
+            raise ValueError("File upload directory is not writable.")
+        return file_upload_directory
+
+    def verify_temp_directory(
+        self, config_man: ConfigManager, create: bool = True
+    ) -> str:
+        """
+        Verify that the temp directory exists and is writable.
+        If not, create it.
+        """
+        temp_directory = config_man.actimetry_service_config.get("temp_directory", None)
+        if not temp_directory:
+            raise ValueError("Temp directory is not set in configuration.")
+        if not os.path.exists(temp_directory):
+            if create:
+                os.makedirs(temp_directory)
+            else:
+                raise ValueError("Temp directory does not exist.")
+        if not os.access(temp_directory, os.W_OK):
+            raise ValueError("Temp directory is not writable.")
+        return temp_directory
 
     def init_service(self):
         pass
 
     def notify_service_messages(self, pattern, channel, message):
-        print('ActimetryService - notify_service_message', pattern, channel, message)
-
+        print("ActimetryService - notify_service_message", pattern, channel, message)
 
     def asset_event_received(self, event: messages.DatabaseEvent):
         pass
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # Very first thing, log to stdout
     log.startLogging(sys.stdout)
 
-    parser = argparse.ArgumentParser(description='Actimetry Service')
-    parser.add_argument('--enable_tests', help='Test mode for service.', default=True)
-    parser.add_argument('--conf', help='Configuration file', default='ActimetryService.json')
+    parser = argparse.ArgumentParser(description="Actimetry Service")
+    parser.add_argument("--enable_tests", help="Test mode for service.", default=True)
+    parser.add_argument(
+        "--conf", help="Configuration file", default="ActimetryService.json"
+    )
     args = parser.parse_args()
 
     # Load configuration
     if not Globals.config_man.load_config(args.conf):
-        sys.stderr.write('Invalid config')
+        sys.stderr.write("Invalid config")
         sys.exit(1)
 
     # Global redis client
@@ -69,36 +116,46 @@ if __name__ == '__main__':
     if args.enable_tests:
         # Make sure we register the service to OpenTera server
         from tools.create_actimetry_service import create_service
+
         """
         def create_service(username: str, password: str, server_url: str, service_key: str) -> bool:
         """
-        if not create_service('admin', 'admin',
-                              f"https://{Globals.config_man.backend_config['hostname']}:{Globals.config_man.backend_config['port']}",
-                              'ActimetryService'):
-            sys.stderr.write('Error: Unable to create service on OpenTera Server')
+        if not create_service(
+            "admin",
+            "admin",
+            f"https://{Globals.config_man.backend_config['hostname']}:{Globals.config_man.backend_config['port']}",
+            "ActimetryService",
+        ):
+            sys.stderr.write("Error: Unable to create service on OpenTera Server")
             sys.exit(1)
 
     # Get service UUID
-    service_info = Globals.redis_client.redisGet(RedisVars.RedisVar_ServicePrefixKey +
-                                                 Globals.config_man.service_config['name'])
+    service_info = Globals.redis_client.redisGet(
+        RedisVars.RedisVar_ServicePrefixKey + Globals.config_man.service_config["name"]
+    )
 
     if service_info is None:
-        sys.stderr.write('Error: Unable to get service info from OpenTera Server - is the server running and config '
-                         'correctly set in this service?')
+        sys.stderr.write(
+            "Error: Unable to get service info from OpenTera Server - is the server running and config "
+            "correctly set in this service?"
+        )
         sys.exit(1)
 
     import json
+
     service_info = json.loads(service_info)
-    if 'service_uuid' not in service_info:
-        sys.stderr.write('OpenTera Server didn\'t return a valid service UUID - aborting.')
+    if "service_uuid" not in service_info:
+        sys.stderr.write(
+            "OpenTera Server didn't return a valid service UUID - aborting."
+        )
         sys.exit(1)
 
     # Update service uuid
-    Globals.config_man.service_config['ServiceUUID'] = service_info['service_uuid']
+    Globals.config_man.service_config["ServiceUUID"] = service_info["service_uuid"]
 
     # Update port, hostname, endpoint
-    Globals.config_man.service_config['port'] = service_info['service_port']
-    Globals.config_man.service_config['hostname'] = service_info['service_hostname']
+    Globals.config_man.service_config["port"] = service_info["service_port"]
+    Globals.config_man.service_config["hostname"] = service_info["service_hostname"]
 
     # DATABASE CONFIG AND OPENING
     #############################
@@ -109,16 +166,20 @@ if __name__ == '__main__':
             Globals.db_man.open_local(None, echo=True, ram=True)
         else:
             POSTGRES = {
-                'user': Globals.config_man.db_config['username'],
-                'pw': Globals.config_man.db_config['password'],
-                'db': Globals.config_man.db_config['name'],
-                'host': Globals.config_man.db_config['url'],
-                'port': Globals.config_man.db_config['port']
+                "user": Globals.config_man.db_config["username"],
+                "pw": Globals.config_man.db_config["password"],
+                "db": Globals.config_man.db_config["name"],
+                "host": Globals.config_man.db_config["url"],
+                "port": Globals.config_man.db_config["port"],
             }
-            Globals.db_man.open(POSTGRES, Globals.config_man.service_config['debug_mode'])
+            Globals.db_man.open(
+                POSTGRES, Globals.config_man.service_config["debug_mode"]
+            )
 
     except OperationalError as e:
-        print("Unable to connect to database - please check settings in config file!", e)
+        print(
+            "Unable to connect to database - please check settings in config file!", e
+        )
         quit()
 
     with flask_app.app_context():
