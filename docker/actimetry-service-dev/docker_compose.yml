@@ -15,6 +15,24 @@ services:
     networks:
       - app-network
 
+  # Time Series Database
+  influxdb:
+    image: influxdb:2.7
+    restart: always
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_USERNAME=admin
+      - DOCKER_INFLUXDB_INIT_PASSWORD=supersecret
+      - DOCKER_INFLUXDB_INIT_ORG=my-org
+      - DOCKER_INFLUXDB_INIT_BUCKET=my-bucket
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=my-super-token
+    ports:
+      - '8086:8086'
+    volumes:
+      - influxdb:/var/lib/influxdb2
+    networks:
+      - app-network
+
   cache:
     image: redis:6.2-alpine
     restart: always
@@ -65,8 +83,8 @@ services:
       - files:/root/opentera/teraserver/python/services/FileTransferService/files
       - certificates:/root/opentera/teraserver/python/config/certificates
     ports:
-    # Debugpy port
-    - '5679:5679'
+      # Debugpy port
+      - '5679:5679'
     networks:
       - app-network
     depends_on:
@@ -85,8 +103,8 @@ services:
       - ./actimetry-service/ActimetryService.json:/actimetry-service/ActimetryService.json
       - ../../:/actimetry-service
     ports:
-    # Debugpy port (default port)
-    - '5678:5678'
+      # Debugpy port (default port)
+      - '5678:5678'
     networks:
       - app-network
     depends_on:
@@ -94,6 +112,9 @@ services:
 
 volumes:
   db:
+    driver: local
+
+  influxdb:
     driver: local
 
   cache:

@@ -15,4 +15,4 @@ class ActimetryAlgorithm(BaseModel):
 
     """
 
-    __tablename__ = "t_actimetry_algorithms"
+    __tablename__ = "t_actimetry_algorithm"
