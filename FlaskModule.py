@@ -3,7 +3,7 @@ import redis
 
 # Flask
 from flask import Flask, request, g, url_for
-from flask_restx import Api
+from flask_restx import Api, Namespace
 from flask_babel import Babel
 
 # OpenTera
@@ -15,8 +15,8 @@ from autobahn.twisted.resource import WSGIRootResource
 
 # Twisted
 from twisted.internet import reactor
-from twisted.web.http import HTTPChannel
-from twisted.web.server import Site
+from twisted.web.http import HTTPChannel, parse_qs
+from twisted.web.server import Site, Request
 from twisted.web.static import File
 from twisted.web.wsgi import WSGIResource
 
@@ -93,6 +93,27 @@ class MySite(Site):
     def __init__(self, resource, requestFactory=None, *args, **kwargs):
         Site.__init__(self, resource, requestFactory, *args, **kwargs)
 
+class MyRequest(Request):
+    def requestReceived(self, command, path, version):
+        # print('Request received', command, path, version)
+        if command == b"POST" and path == b"/api/assets":
+            self.content.seek(0, 0)
+            self.args = {}
+
+            self.method, self.uri = command, path
+            self.clientproto = version
+            x = self.uri.split(b"?", 1)
+
+            if len(x) == 1:
+                self.path = self.uri
+            else:
+                self.path, argstring = x
+                self.args = parse_qs(argstring, 1)
+
+            super().process()
+        else:
+            super().requestReceived(command, path, version)
+
 
 # Simple fix for API documentation used with reverse proxy
 class CustomAPI(Api):
@@ -164,6 +185,9 @@ api = CustomAPI(
 
 # Namespaces
 service_api_ns = api.namespace("", description="ActimetryService API")
+user_api_ns = api.namespace("user", description="API for User calls")
+participant_api_ns = api.namespace("participant", description="API for Participant calls")
+device_api_ns = api.namespace("device", description="API for Device calls")
 
 
 class FlaskModule(BaseModule):
@@ -190,7 +214,7 @@ class FlaskModule(BaseModule):
         flask_app.config.update({"BABEL_DEFAULT_LOCALE": "fr"})
         flask_app.config.update({"SESSION_COOKIE_SECURE": True})
 
-        # flask_app.config.update({'UPLOAD_FOLDER': config.specific_service_config['files_directory']})
+        flask_app.config.update({'UPLOAD_FOLDER': config.actimetry_service_config['files_directory']})
         self.service = service
 
         # Init API
@@ -215,6 +239,7 @@ class FlaskModule(BaseModule):
 
         # Create a Twisted Web Site
         site = MySite(root_resource)
+        site.requestFactory = MyRequest
         # val = internet.TCPServer(self.config.service_config['port'], site)
         val = reactor.listenTCP(self.config.service_config["port"], site)
         return val
@@ -270,6 +295,28 @@ class FlaskModule(BaseModule):
         from API.Version import Version
 
         api_ns.add_resource(Version, "/version", resource_class_kwargs=kwargs)
+
+    @staticmethod
+    def init_user_api(module: object, namespace: Namespace, additional_args: dict = dict()):
+        # Default arguments
+        kwargs = {'flaskModule': module}
+        kwargs |= additional_args
+
+    @staticmethod
+    def init_participant_api(module: object, namespace: Namespace, additional_args: dict = dict()):
+        # Default arguments
+        kwargs = {'flaskModule': module}
+        kwargs |= additional_args
+
+    @staticmethod
+    def init_device_api(module: object, namespace: Namespace, additional_args: dict = dict()):
+        # Default arguments
+        kwargs = {'flaskModule': module}
+        kwargs |= additional_args
+
+        from API.device.QueryActimetryAsset import QueryActimetryAsset
+
+        namespace.add_resource(QueryActimetryAsset, '/assets', resource_class_kwargs=kwargs)
 
     def init_views(self):
         # Default arguments

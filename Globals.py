@@ -1,7 +1,7 @@
 from ConfigManager import ConfigManager
 from libactimetry.db.DBManager import DBManager
 from opentera.redis.RedisClient import RedisClient
-from opentera.services.ServiceOpenTeraWithTests import ServiceOpenTeraWithTests
+from opentera.services.ServiceOpenTeraWithAssets import ServiceOpenTeraWithAssets
 
 # Configuration manager
 config_man : ConfigManager = ConfigManager()
@@ -13,4 +13,4 @@ db_man : DBManager = None
 redis_client : RedisClient = None
 
 # Service
-service : ServiceOpenTeraWithTests = None
+service : ServiceOpenTeraWithAssets = None
