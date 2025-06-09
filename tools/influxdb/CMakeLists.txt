@@ -1,5 +1,3 @@
-
-
 message(STATUS "Downloading assets from GitHub...")
 
 # Create data directory if it does not exist
