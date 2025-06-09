@@ -1,15 +1,11 @@
 import uuid
 from io import BytesIO
-import time
-import jwt
 import json
 import requests
 from requests import Response
-from datetime import datetime
 
 from flask import Response as FlaskResponse
 from flask import Flask
-from flask import jsonify
 from flask_babel import Babel
 import redis
 
@@ -65,7 +61,15 @@ class FakeFlaskModule(BaseModule):
         # Disable flask cache
         self.flask_app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
+        self.user_api_namespace = self.api.namespace('user', description='Fake Actimetry User API')
+        self.participant_api_namespace = self.api.namespace('participant',
+                                                            description='Fake Actimetry Participant API')
+        self.device_api_namespace = self.api.namespace('device', description='Fake Actimetry Device API')
+
         self.setup_fake_actimetry_service_api(flask_app)
+        self.setup_fake_user_api(flask_app)
+        self.setup_fake_participant_api(flask_app)
+        self.setup_fake_device_api(flask_app)
 
     def setup_fake_actimetry_service_api(self, flask_app):
         with flask_app.app_context():
@@ -76,6 +80,33 @@ class FakeFlaskModule(BaseModule):
                 "flask_module": self,
             }
             FlaskModule.init_api(self.service, self, self.api_ns, additional_args)
+
+    def setup_fake_user_api(self, flask_app):
+        with flask_app.app_context():
+            # Setup Fake API
+            kwargs = {'flaskModule': self,
+                      'test': True}
+
+            # The trick is to initialize main server api to the newly created namespace
+            FlaskModule.init_user_api(self, self.user_api_namespace, kwargs)
+
+    def setup_fake_participant_api(self, flask_app):
+        with flask_app.app_context():
+            # Setup Fake API
+            kwargs = {'flaskModule': self,
+                      'test': True}
+
+            # The trick is to initialize main server api to the newly created namespace
+            FlaskModule.init_participant_api(self, self.participant_api_namespace, kwargs)
+
+    def setup_fake_device_api(self, flask_app):
+        with flask_app.app_context():
+            # Setup Fake API
+            kwargs = {'flaskModule': self,
+                      'test': True}
+
+            # The trick is to initialize main server api to the newly created namespace
+            FlaskModule.init_device_api(self, self.device_api_namespace, kwargs)
 
 
 class FakeActimetryService(ServiceOpenTeraWithAssets):
@@ -317,7 +348,7 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
         )
 
     def delete_from_opentera_with_token(
-        self, token: str, api_url: str, params: dict, additional_headers: dict = {}
+        self, token: str, api_url: str, params: dict = None, additional_headers: dict = None
     ) -> Response:
         headers = {"Authorization": f"OpenTera {token}"}
         headers.update(additional_headers)

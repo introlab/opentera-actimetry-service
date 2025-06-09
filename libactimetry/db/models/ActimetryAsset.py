@@ -1,7 +1,7 @@
 import os
 
-from BaseModel import BaseModel
-from sqlalchemy import Column, Integer, String, Sequence, BigInteger, SmallInteger, exc
+from libactimetry.db.models.BaseModel import BaseModel
+from sqlalchemy import Column, Integer, String, Sequence, BigInteger, SmallInteger, exc, UUID
 from sqlalchemy.orm import relationship
 from enum import Enum
 
@@ -17,9 +17,9 @@ class ActimetryAsset(BaseModel):
     ActimetryAsset model representing an asset in the Actimetry system. This is related to a raw data that is uploaded to the server.
     """
     __tablename__ = "t_actimetry_assets"
-    id_asset = Column(Integer, Sequence('id_asset_sequence'), primary_key=True, autoincrement=True)
+    # id_asset = Column(Integer, Sequence('id_asset_sequence'), primary_key=True, autoincrement=True)
     id_collection = Column(Integer, nullable=False)  # Collection ID, usually equal to id_session
-    asset_uuid = Column(String(36), nullable=False, unique=True)
+    asset_uuid = Column(UUID, nullable=False, unique=True, primary_key=True)
     asset_original_filename = Column(String, nullable=False)
     asset_file_size = Column(BigInteger, nullable=False)
     asset_status = Column(SmallInteger, nullable=False, default=ActimetryAssetStatus.STATUS_UNPROCESSED)

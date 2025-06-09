@@ -71,8 +71,19 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         self.assertIsNotNone(self._service.flask_app)
         self.test_client = self._service.flask_app.test_client()
         self.assertIsNotNone(self.test_client)
-        with self.app_context():
-            pass
+
+        # Get tokens for tests
+        admin_user = self._login_user('admin', 'admin')
+        self.admin_user_token = admin_user['user_token']
+        devices = self._service.get_from_opentera_with_token(token=self.admin_user_token,
+                                                             api_url='/api/user/devices')
+        self.device_token = devices.json()[0]['device_token']
+        participants = self._service.get_from_opentera_with_token(token=self.admin_user_token,
+                                                                  api_url='/api/user/participants',
+                                                                  params={'id_project': 1})
+        self.participant_static_token = participants.json()[0]['participant_token']
+        participant = self._login_participant('participant1', 'opentera')
+        self.participant_dynamic_token = participant['participant_token']
 
     def tearDown(self):
         with self.app_context():
@@ -162,6 +173,18 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         # Use HTTPAuth to login
         server_url = f'https://{self._service.config_man.backend_config["hostname"]}:{self._service.config_man.backend_config["port"]}'
         params = {"with_websocket": False}
+        response = requests.get(
+            server_url + endpoint,
+            auth=(username, password),
+            params=params,
+            verify=False,
+        )
+        self.assertTrue(response.status_code == 200)
+        return response.json()
+
+    def _login_participant(self, username: str, password: str, endpoint: str = "/api/participant/login") -> dict:
+        server_url = f'https://{self._service.config_man.backend_config["hostname"]}:{self._service.config_man.backend_config["port"]}'
+        params = {}
         response = requests.get(
             server_url + endpoint,
             auth=(username, password),

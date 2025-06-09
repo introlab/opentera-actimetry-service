@@ -296,6 +296,10 @@ class FlaskModule(BaseModule):
 
         api_ns.add_resource(Version, "/version", resource_class_kwargs=kwargs)
 
+        FlaskModule.init_user_api(module, user_api_ns)
+        FlaskModule.init_device_api(module, device_api_ns)
+        FlaskModule.init_participant_api(module, participant_api_ns)
+
     @staticmethod
     def init_user_api(module: object, namespace: Namespace, additional_args: dict = dict()):
         # Default arguments
