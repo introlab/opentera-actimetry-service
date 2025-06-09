@@ -66,3 +66,5 @@ add_custom_target(opentera-actimetry-service-python-all-with-translations
 # Build this target if you want to compile translations only
 add_custom_target(opentera-actimetry-service-python-all-with-translations-compile-only ALL
     DEPENDS opentera-actimetry-service-python-translations-compile-only)
+
+add_subdirectory(tools/influxdb)
