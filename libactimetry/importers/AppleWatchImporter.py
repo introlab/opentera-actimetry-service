@@ -2,13 +2,20 @@ import pandas as pd
 import json
 import struct
 import numpy as np
+import os
+
+from libactimetry.importers.BaseImporter import BaseImporter
+from libactimetry.db.InfluxDBDataClient import InfluxDBDataClient
 
 
-class AppleWatchImporter:
-    def __init__(self, data_directory):
+class AppleWatchImporter(BaseImporter):
+    def __init__(
+        self, data_directory: str, db_client: InfluxDBDataClient, bucket_name: str
+    ):
+        BaseImporter.__init__(self, db_client, bucket_name)
         self.data_directory = data_directory
 
-    def import_data(self):
+    def import_data(self, bucket_name: str):
         # Implement data import logic here
         # First, verify that the session.oimi JSON file exists
         session_file = f"{self.data_directory}/session.oimi"
@@ -18,13 +25,49 @@ class AppleWatchImporter:
                 session_info = json.load(file)
 
                 for file_name in session_info.get("files", []):
-                    file_path = f"{self.data_directory}/{file_name}"
+                    file_path: str = f"{self.data_directory}/{file_name}"
 
-                    # Reate HealthKit.data
-                    if file_name == "watch_HealthKit.data":
-                        self._import_healthkit_data(file_path)
-                    elif file_name == "watch_RawAccelerometer.data":
-                        self._import_raw_accelerometer_data(file_path)
+                    # TODO Check if the file exists before trying to read it
+                    # TODO Exceptiion handling if file does not exist
+                    if os.path.exists(file_path):
+                        if file_name == "watch_Activity.data":
+                            self._import_activity_data(file_path, bucket_name)
+                        elif file_name == "watch_Battery.data":
+                            self._import_battery_data(file_path, bucket_name)
+                        elif file_name == "watch_Beacons.data":
+                            self._import_beacons_data(file_path, bucket_name)
+                        elif file_name == "watch_Calorie.data":
+                            self._import_calorie_data(file_path, bucket=bucket_name)
+                        elif file_name == "watch_Coordinates.data":
+                            self._import_coordinates_data(file_path, bucket=bucket_name)
+                        elif file_name == "watch_DyskineticSymptoms.data":
+                            self._import_dyskinetic_symptoms_data(
+                                file_path, bucket=bucket_name
+                            )
+                        elif file_name == "watch_GPS.data":
+                            self._import_gps_data(file_path, bucket=bucket_name)
+                        elif file_name == "watch_Gyroscope.data":
+                            self._import_gyroscope_data(file_path, bucket=bucket_name)
+                        elif file_name == "watch_Headings.data":
+                            self._import_headings_data(file_path, bucket=bucket_name)
+                        elif file_name == "watch_HealthKit.data":
+                            self._import_healthkit_data(file_path, bucket=bucket_name)
+                        elif file_name == "watch_HeartRate.data":
+                            self._import_heart_rate_data(file_path, bucket=bucket_name)
+                        elif file_name == "watch_Magnetometer.data":
+                            self._import_magnetometer_data(
+                                file_path, bucket=bucket_name
+                            )
+                        elif file_name == "watch_Pedometer.data":
+                            self._import_pedometer_data(file_path, bucket=bucket_name)
+                        elif file_name == "watch_RawAccelerometer.data":
+                            self._import_raw_accelerometer_data(
+                                file_path, bucket=bucket_name
+                            )
+                        elif file_name == "watch_Tremor.data":
+                            self._import_tremor_data(file_path, bucket=bucket_name)
+
+                        # TODO Do something with watch_logs.txt ?
 
                 print(f"Session data loaded from {session_file}")
         except FileNotFoundError:
@@ -34,10 +77,195 @@ class AppleWatchImporter:
             print(f"Error reading session file {session_file}: {e}")
             return
 
-    def _import_healthkit_data(self, file_path):
+    def delete_data(self, bucket_name: str):
+        """
+        Delete all data from the specified InfluxDB bucket.
+        """
+        all_buckets = self.db_client.available_bucket_names()
+
+        for bucket in all_buckets:
+            if bucket.startswith(bucket_name + "."):
+                self.db_client.delete_bucket(bucket_name=bucket)
+
+    def _import_activity_data(self, file_path: str, bucket: str):
+        """
+        Import activity data from the specified file path.
+
+        • Timestamp: UInt64–8bytes: Timestamp (Unix format) with milliseconds precision
+        • Detected Activities: UInt8– 1byte: Detected activitie sand confidence level:
+            • Bits 0-1: Confidence level:
+                – 00: low
+                – 01: medium
+                – 10: high
+            • Bit 2: Automative activity detected
+            • Bit 3: Cycling activity detected
+            • Bit 4: Running activity detected
+            • Bit 5: Stationary activity detected
+            • Bit 6: Walking activity detected
+            • Bit 7: Unknown activity detected
+        """
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 13:
+                    print(
+                        f"Invalid sensor ID for activity data: {header_info['sensor_id']}"
+                    )
+                    return
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("timestamp", "uint64"),
+                        ("detected_activities", "uint8"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert timestamp to datetime
+                df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+                # Set the timestamp as the index
+                df.set_index("timestamp", inplace=True)
+                # Extract activity information and confidence level
+                # Set activity columns based on the detected_activities bitmask as boolean columns
+                df["confidence_level"] = df["detected_activities"] & 0b00000011
+                df["automotive_activity"] = (df["detected_activities"] & 0b00000100) > 0
+                df["cycling_activity"] = (df["detected_activities"] & 0b00001000) > 0
+                df["running_activity"] = (df["detected_activities"] & 0b00010000) > 0
+                df["stationary_activity"] = (df["detected_activities"] & 0b00100000) > 0
+                df["walking_activity"] = (df["detected_activities"] & 0b01000000) > 0
+                df["unknown_activity"] = (df["detected_activities"] & 0b10000000) > 0
+                # Drop the original detected_activities column
+                df.drop(columns=["detected_activities"], inplace=True)
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
+
+    def _import_battery_data(self, file_path: str, bucket: str):
+        """
+        Import battery data from the specified file path.
+
+        • Timestamp: UInt64–8bytes: Timestamp (Unix format) with milliseconds precision
+        • Battery level: UInt8 – 1 byte: Battery level in percentage (between 0 and 100, 0 is invalid / unknown state)
+        • Battery state: UInt8 – 1 byte: Battery state
+            – 0: Unknown
+            – 1: Unplugged
+            – 2: Charging
+            – 3: Full
+        """
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 1:
+                    print(
+                        f"Invalid sensor ID for battery data: {header_info['sensor_id']}"
+                    )
+                    return
+
+                check_interval = header_info.get("settings", {}).get(
+                    "check_interval", 1
+                )
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("timestamp", "uint64"),
+                        ("battery_level", "uint8"),
+                        ("battery_state", "uint8"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert timestamp to datetime
+                df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
+                # Set the timestamp as the index
+                df.set_index("timestamp", inplace=True)
+                pass
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
+
+    def _import_beacons_data(self, file_path: str, bucket: str):
+        """
+        Import beacons data from the specified file path.
+        """
         pass
 
-    def _import_raw_accelerometer_data(self, file_path):
+    def _import_calorie_data(self, file_path: str, bucket: str):
+        """
+        Import calorie data from the specified file path.
+        """
+        pass
+
+    def _import_coordinates_data(self, file_path: str, bucket: str):
+        """
+        Import coordinates data from the specified file path.
+        """
+        pass
+
+    def _import_dyskinetic_symptoms_data(self, file_path: str, bucket: str):
+        """
+        Import dyskinetic symptoms data from the specified file path.
+        """
+        pass
+
+    def _import_gps_data(self, file_path: str, bucket: str):
+        """
+        Import GPS data from the specified file path.
+        """
+        pass
+
+    def _import_gyroscope_data(self, file_path: str, bucket: str):
+        """
+        Import gyroscope data from the specified file path.
+        """
+        pass
+
+    def _import_headings_data(self, file_path: str, bucket: str):
+        """
+        Import headings data from the specified file path.
+        """
+        pass
+
+    def _import_heart_rate_data(self, file_path: str, bucket: str):
+        """
+        Import heart rate data from the specified file path.
+        """
+        pass
+
+    def _import_magnetometer_data(self, file_path: str, bucket: str):
+        """
+        Import magnetometer data from the specified file path.
+        """
+        pass
+
+    def _import_pedometer_data(self, file_path: str, bucket: str):
+        """
+        Import pedometer data from the specified file path.
+        """
+        pass
+
+    def _import_tremor_data(self, file_path: str, bucket: str):
+        """
+        Import tremor data from the specified file path.
+        """
+        pass
+
+    def _import_healthkit_data(self, file_path: str, bucket: str):
+        """
+        Import HealthKit data from the specified file path.
+        """
+        pass
+
+    def _import_raw_accelerometer_data(self, file_path: str, bucket: str):
         """
         Binary file format for Raw Accelerometer data:
         Timestamp: UInt64 – 8 bytes: Timestamp (Unix format) with milliseconds precision
@@ -50,6 +278,12 @@ class AppleWatchImporter:
             try:
                 header_info = self._read_header(file)
 
+                if header_info["sensor_id"] != 9:
+                    print(
+                        f"Invalid sensor ID for raw accelerometer data: {header_info['sensor_id']}"
+                    )
+                    return
+
                 frequency = header_info.get("settings", {}).get("frequency", 50)
 
                 # Use Pandas to read the binary data
@@ -57,9 +291,9 @@ class AppleWatchImporter:
                 dtype = np.dtype(
                     [
                         ("timestamp", "uint64"),
-                        ("x", "float32"),
-                        ("y", "float32"),
-                        ("z", "float32"),
+                        ("x_acc", "float32"),
+                        ("y_acc", "float32"),
+                        ("z_acc", "float32"),
                     ]
                 )
                 data = np.fromfile(file, dtype=dtype)
@@ -69,6 +303,9 @@ class AppleWatchImporter:
                 df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
                 # Set the timestamp as the index
                 df.set_index("timestamp", inplace=True)
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "RawAccelerometer", df)
 
             except Exception as e:
                 print(f"Error reading header from {file_path}: {e}")
@@ -114,9 +351,27 @@ class AppleWatchImporter:
 
 
 if __name__ == "__main__":
+    from libactimetry.db.InfluxDBDataClient import InfluxDBDataClient
+
+    # url = "http://influxdb:8086"
+    # token = "my-super-token"
+    # org = "my-org"
+    # bucket = "my-bucket"
+
+    client = InfluxDBDataClient(
+        host="influxdb", port=8086, token="my-super-token", org="my-org"
+    )
+
+    buckets: list[str] = client.available_bucket_names()
+    print("Available buckets:", buckets)
+
     # Example usage
     importer = AppleWatchImporter(
-        data_directory="/actimetry-service/tools/influxdb/data/2025-06-09_11-54-11-0"
+        data_directory="/actimetry-service/tools/influxdb/data/2025-06-09_11-54-11-0",
+        db_client=client,
+        bucket_name="my-bucket",
     )
-    importer.import_data()
+
+    importer.delete_data("my-bucket")
+    importer.import_data("my-bucket")
     print("Data import completed.")
