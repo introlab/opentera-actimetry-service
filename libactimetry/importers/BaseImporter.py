@@ -64,14 +64,21 @@ class BaseImporter(ABC):
         self.db_client = client
         self.bucket_name = bucket_name
 
-        # Create bucket if it does not exist
+    def import_data(self, bucket_name: str):
+        # Create bucket if does not exist
         if bucket_name not in self.db_client.available_bucket_names():
             if not self.db_client.create_bucket(bucket_name):
                 raise BucketCreateError(bucket_name, "Failed to create bucket.")
 
+        self.import_data_internal(bucket_name)
+
     @abstractmethod
-    def import_data(self, bucket_name: str):
-        pass
+    def import_data_internal(self, bucket_name: str):
+        """
+        Internal method to import data into the specified InfluxDB bucket.
+        This method should be implemented by subclasses.
+        """
+        raise NotImplementedError("Subclasses must implement this method.")
 
     @abstractmethod
     def delete_data(self, bucket_name: str):
@@ -96,9 +103,7 @@ class BaseImporter(ABC):
             raise BucketWriteError(bucket_name, "Failed to write data.")
 
         # Re-query for test
-        queried_df = self.db_client.query_data(
-            bucket_name, f'from(bucket: "{bucket_name}") |> range(start: 0)'
-        )
+        queried_df = self.db_client.query_data(bucket_name, measurement_name)
         if queried_df.empty:
             raise ImporterError(
                 f"No data found in bucket '{bucket_name}' after writing."

@@ -67,7 +67,7 @@ class InfluxDBDataClient:
             print(f"Error writing data to bucket '{bucket_name}': {e}")
             return False
 
-    def query_data(self, bucket_name: str, query: str) -> pd.DataFrame:
+    def query_data(self, bucket_name: str, measurement: str) -> pd.DataFrame:
         """
         Query data from a specified bucket in the InfluxDB instance.
         """
@@ -75,15 +75,18 @@ class InfluxDBDataClient:
             raise ValueError(f"Bucket '{bucket_name}' does not exist.")
 
         query_api = self.client.query_api()
-        result = query_api.query(query=query, org=self.org)
-
-        # Convert query result to DataFrame
-        data = []
+        result = query_api.query(
+            query=f'from(bucket: "{bucket_name}") |> range(start: 0) |> filter(fn: (r) => r._measurement == "{measurement}")',
+            org=self.org,
+        )
+        # Convert the result to a DataFrame
+        data_frames = []
         for table in result:
             for record in table.records:
-                data.append(record.values)
-
-        return pd.DataFrame(data)
+                data_frames.append(record.values)
+        df = pd.DataFrame(data_frames)
+        print(f"Data queried from bucket '{bucket_name}' successfully.")
+        return df
 
     def close(self):
         """

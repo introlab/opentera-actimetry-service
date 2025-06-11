@@ -15,7 +15,7 @@ class AppleWatchImporter(BaseImporter):
         BaseImporter.__init__(self, db_client, bucket_name)
         self.data_directory = data_directory
 
-    def import_data(self, bucket_name: str):
+    def import_data_internal(self, bucket_name: str):
         # Implement data import logic here
         # First, verify that the session.oimi JSON file exists
         session_file = f"{self.data_directory}/session.oimi"
@@ -91,7 +91,7 @@ class AppleWatchImporter(BaseImporter):
         """
         Import activity data from the specified file path.
 
-        • Timestamp: UInt64–8bytes: Timestamp (Unix format) with milliseconds precision
+        • time: UInt64–8bytes: time (Unix format) with milliseconds precision
         • Detected Activities: UInt8– 1byte: Detected activitie sand confidence level:
             • Bits 0-1: Confidence level:
                 – 00: low
@@ -118,17 +118,17 @@ class AppleWatchImporter(BaseImporter):
                 # Create a structured array to hold the data
                 dtype = np.dtype(
                     [
-                        ("timestamp", "uint64"),
+                        ("time", "uint64"),
                         ("detected_activities", "uint8"),
                     ]
                 )
                 data = np.fromfile(file, dtype=dtype)
                 # Convert the structured array to a DataFrame
                 df = pd.DataFrame(data)
-                # Convert timestamp to datetime
-                df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-                # Set the timestamp as the index
-                df.set_index("timestamp", inplace=True)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+                # Set the time as the index
+                df.set_index("time", inplace=True)
                 # Extract activity information and confidence level
                 # Set activity columns based on the detected_activities bitmask as boolean columns
                 df["confidence_level"] = df["detected_activities"] & 0b00000011
@@ -149,7 +149,7 @@ class AppleWatchImporter(BaseImporter):
         """
         Import battery data from the specified file path.
 
-        • Timestamp: UInt64–8bytes: Timestamp (Unix format) with milliseconds precision
+        • time: UInt64–8bytes: time (Unix format) with milliseconds precision
         • Battery level: UInt8 – 1 byte: Battery level in percentage (between 0 and 100, 0 is invalid / unknown state)
         • Battery state: UInt8 – 1 byte: Battery state
             – 0: Unknown
@@ -175,7 +175,7 @@ class AppleWatchImporter(BaseImporter):
                 # Create a structured array to hold the data
                 dtype = np.dtype(
                     [
-                        ("timestamp", "uint64"),
+                        ("time", "uint64"),
                         ("battery_level", "uint8"),
                         ("battery_state", "uint8"),
                     ]
@@ -183,10 +183,10 @@ class AppleWatchImporter(BaseImporter):
                 data = np.fromfile(file, dtype=dtype)
                 # Convert the structured array to a DataFrame
                 df = pd.DataFrame(data)
-                # Convert timestamp to datetime
-                df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-                # Set the timestamp as the index
-                df.set_index("timestamp", inplace=True)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+                # Set the time as the index
+                df.set_index("time", inplace=True)
                 pass
 
             except Exception as e:
@@ -268,7 +268,7 @@ class AppleWatchImporter(BaseImporter):
     def _import_raw_accelerometer_data(self, file_path: str, bucket: str):
         """
         Binary file format for Raw Accelerometer data:
-        Timestamp: UInt64 – 8 bytes: Timestamp (Unix format) with milliseconds precision
+        time: UInt64 – 8 bytes: time (Unix format) with milliseconds precision
         Accelerometer x-data: Float32 – 4 bytes: Accelerometer data for x-axis (g)
         Accelerometer y-data: Float32 – 4 bytes: Accelerometer data for y-axis (g)
         Accelerometer z-data: Float32 – 4 bytes: Accelerometer data for z-axis (g)
@@ -290,7 +290,7 @@ class AppleWatchImporter(BaseImporter):
                 # Create a structured array to hold the data
                 dtype = np.dtype(
                     [
-                        ("timestamp", "uint64"),
+                        ("time", "uint64"),
                         ("x_acc", "float32"),
                         ("y_acc", "float32"),
                         ("z_acc", "float32"),
@@ -299,10 +299,10 @@ class AppleWatchImporter(BaseImporter):
                 data = np.fromfile(file, dtype=dtype)
                 # Convert the structured array to a DataFrame
                 df = pd.DataFrame(data)
-                # Convert timestamp to datetime
-                df["timestamp"] = pd.to_datetime(df["timestamp"], unit="ms")
-                # Set the timestamp as the index
-                df.set_index("timestamp", inplace=True)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+                # Set the time as the index
+                df.set_index("time", inplace=True)
 
                 # Write the DataFrame to the specified bucket
                 self.write_data_frame(bucket, "RawAccelerometer", df)
