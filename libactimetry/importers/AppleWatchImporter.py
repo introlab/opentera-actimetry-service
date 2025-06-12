@@ -81,11 +81,7 @@ class AppleWatchImporter(BaseImporter):
         """
         Delete all data from the specified InfluxDB bucket.
         """
-        all_buckets = self.db_client.available_bucket_names()
-
-        for bucket in all_buckets:
-            if bucket.startswith(bucket_name + "."):
-                self.db_client.delete_bucket(bucket_name=bucket)
+        self.db_client.delete_bucket(bucket_name)
 
     def _import_activity_data(self, file_path: str, bucket: str):
         """
@@ -299,6 +295,11 @@ class AppleWatchImporter(BaseImporter):
                 data = np.fromfile(file, dtype=dtype)
                 # Convert the structured array to a DataFrame
                 df = pd.DataFrame(data)
+
+                # Add metadata to the DataFrame
+                # df["frequency"] = frequency
+                # df["source"] = "Apple Watch"
+
                 # Convert time to datetime
                 df["time"] = pd.to_datetime(df["time"], unit="ms")
                 # Set the time as the index

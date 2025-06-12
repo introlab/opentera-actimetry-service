@@ -93,13 +93,19 @@ class BaseImporter(ABC):
             raise ImporterError(f"Failed to delete bucket '{bucket_name}'.")
 
     def write_data_frame(
-        self, bucket_name: str, measurement_name: str, df: pd.DataFrame
+        self,
+        bucket_name: str,
+        measurement_name: str,
+        df: pd.DataFrame,
+        tag_columns: list[str] = None,
     ):
         """
         Save the DataFrame to the specified InfluxDB bucket.
         """
         # Write the DataFrame to the bucket
-        if not self.db_client.write_data(bucket_name, measurement_name, df):
+        if not self.db_client.write_data(
+            bucket_name, measurement_name, df, tag_columns=tag_columns
+        ):
             raise BucketWriteError(bucket_name, "Failed to write data.")
 
         # Re-query for test
