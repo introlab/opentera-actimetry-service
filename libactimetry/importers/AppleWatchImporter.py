@@ -6,6 +6,7 @@ import os
 
 from libactimetry.importers.BaseImporter import BaseImporter
 from libactimetry.db.InfluxDBDataClient import InfluxDBDataClient
+from libactimetry.db.TimescaleDBDataClient import TimescaleDBDataClient
 
 
 class AppleWatchImporter(BaseImporter):
@@ -297,8 +298,8 @@ class AppleWatchImporter(BaseImporter):
                 df = pd.DataFrame(data)
 
                 # Add metadata to the DataFrame
-                # df["frequency"] = frequency
-                # df["source"] = "Apple Watch"
+                df["frequency"] = frequency
+                df["source"] = "Apple Watch"
 
                 # Convert time to datetime
                 df["time"] = pd.to_datetime(df["time"], unit="ms")
@@ -306,7 +307,9 @@ class AppleWatchImporter(BaseImporter):
                 df.set_index("time", inplace=True)
 
                 # Write the DataFrame to the specified bucket
-                self.write_data_frame(bucket, "RawAccelerometer", df)
+                self.write_data_frame(
+                    bucket, "RawAccelerometer", df, tag_columns=["source", "frequency"]
+                )
 
             except Exception as e:
                 print(f"Error reading header from {file_path}: {e}")
@@ -359,8 +362,21 @@ if __name__ == "__main__":
     # org = "my-org"
     # bucket = "my-bucket"
 
-    client = InfluxDBDataClient(
-        host="influxdb", port=8086, token="my-super-token", org="my-org"
+    # client = InfluxDBDataClient(
+    #    host="influxdb", port=8086, token="my-super-token", org="my-org"
+    # )
+    """
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=timescaledb
+    """
+
+    client = TimescaleDBDataClient(
+        host="timescaledb",
+        port=5432,
+        user="postgres",
+        password="postgres",
+        database="timescaledb",
     )
 
     buckets: list[str] = client.available_bucket_names()
@@ -370,9 +386,9 @@ if __name__ == "__main__":
     importer = AppleWatchImporter(
         data_directory="/actimetry-service/tools/influxdb/data/2025-06-09_11-54-11-0",
         db_client=client,
-        bucket_name="my-bucket",
+        bucket_name="my_bucket",
     )
 
-    importer.delete_data("my-bucket")
-    importer.import_data("my-bucket")
+    importer.delete_data("my_bucket")
+    importer.import_data("my_bucket")
     print("Data import completed.")

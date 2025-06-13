@@ -2,9 +2,12 @@ from influxdb_client import InfluxDBClient
 from influxdb_client.client.write_api import SYNCHRONOUS
 import pandas as pd
 import numpy as np
-from influxdb_client import Point, WritePrecision
+import io
+from influxdb_client import Point, WritePrecision, WriteOptions
+from tools.timeit import timeit_class
 
 
+@timeit_class
 class InfluxDBDataClient:
     def __init__(self, host: str, port: int, token: str, org: str = None):
         self.host = host
@@ -16,6 +19,14 @@ class InfluxDBDataClient:
             token=self.token,
             org=self.org,
             enable_gzip=True,
+            profilers=[
+                "write",
+                "query",
+                "health",
+                "buckets",
+                "query_executions",
+                "write_executions",
+            ],
         )
 
     def available_bucket_names(self) -> list[str]:
@@ -133,31 +144,17 @@ class InfluxDBDataClient:
         |> range(start: 0)
         |> filter(fn: (r) => r._measurement == "{measurement}")
         |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+        |> drop(columns: ["_start", "_stop", "_measurement", "_field","_result", "_table"])
+        |> rename(columns: {{"_time": "time"}})
         """
+        #        |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+        #        |> drop(columns: ["_start", "_stop", "_measurement", "_field","_result", "_table"])
+        # |> rename(columns: {{"_time": "time"}})
+        #        |> filter(fn: (r) => r._field == "x_acc" or r._field == "y_acc" or r._field == "z_acc")
 
-        records = self.client.query_api().query_data_frame(query=flux_query)
-
-        # records = self.client.query_api().query_data_frame(
-        #    query=flux_query,
-        #    org=self.org,
-        # )
-
+        df = self.client.query_api().query(query=flux_query)
         print("Data queried from bucket:", bucket_name)
-
-        # query_api = self.client.query_api()
-        # result = query_api.query(
-        #    query=f'from(bucket: "{bucket_name}") |> range(start: 0) |> filter(fn: (r) => r._measurement == "{measurement}")',
-        #    org=self.org,
-        # )
-        # Convert the result to a DataFrame
-
-        # data_frames = []
-        # for table in result:
-        #    for record in table.records:
-        #        data_frames.append(record.values)
-        # df = pd.DataFrame(data_frames)
-        # print(f"Data queried from bucket '{bucket_name}' successfully.")
-        # return df
+        return df
 
     def close(self):
         """

@@ -33,6 +33,20 @@ services:
     networks:
       - app-network
 
+  timescaledb:
+    image: timescale/timescaledb:latest-pg17
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=timescaledb
+    ports:
+      - '5434:5432'
+    volumes:
+      - timescale_db:/var/lib/postgresql/data
+    networks:
+      - app-network
+
   cache:
     image: redis:6.2-alpine
     restart: always
@@ -121,6 +135,9 @@ volumes:
     driver: local
 
   certificates:
+    driver: local
+
+  timescale_db:
     driver: local
 
   nginx-logs:
