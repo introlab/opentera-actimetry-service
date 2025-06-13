@@ -386,9 +386,9 @@ if __name__ == "__main__":
     importer = AppleWatchImporter(
         data_directory="/actimetry-service/tools/influxdb/data/2025-06-09_11-54-11-0",
         db_client=client,
-        bucket_name="my_bucket",
+        bucket_name="my_bucket2",
     )
 
-    importer.delete_data("my_bucket")
-    importer.import_data("my_bucket")
+    importer.delete_data("my_bucket2")
+    importer.import_data("my_bucket2")
     print("Data import completed.")

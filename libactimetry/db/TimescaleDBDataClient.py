@@ -134,7 +134,7 @@ class TimescaleDBDataClient:
             raw_conn = conn.connection
             cursor = raw_conn.cursor()
             cursor.copy_expert(copy_sql, csv_buffer)
-            conn.commit()
+            raw_conn.commit()
 
         return True
 
@@ -178,18 +178,19 @@ class TimescaleDBDataClient:
 
         table_name = bucket_name + "_" + measurement_name
         try:
-            self.create_hypertable_from_dataframe(table_name, data, None)
+            return self.create_hypertable_from_dataframe(table_name, data, None)
         except Exception as e:
             print(f"Error writing data to table '{table_name}': {e}")
             return False
 
-    def query_data(self, table_name: str) -> pd.DataFrame:
+    def query_data(self, bucket_name: str, measurement_name: str) -> pd.DataFrame:
         """
         Query data from a specified hypertable in TimescaleDB.
         """
+        table_name = bucket_name + "_" + measurement_name
         if table_name not in self.available_tables():
             raise ValueError(f"Table '{table_name}' does not exist.")
-        query = f"SELECT * FROM {table_name};"
+        query = f"""SELECT * FROM "{table_name}";"""
         df = pd.read_sql(query, self.engine)
         return df
 
