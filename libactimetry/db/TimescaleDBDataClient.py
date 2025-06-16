@@ -3,6 +3,78 @@ import pandas as pd
 from tools.timeit import timeit_class
 import io
 
+from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, ForeignKey
+from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import relationship
+import datetime
+
+
+Base = declarative_base()
+
+
+class Bucket(Base):
+    """
+    Bucket which would be a table containing measurements with each measurement having
+    a metadata column containing a JSON object with all the metadata and linking to an hypertable with all data.
+    The hypertable is created from pandas DataFrame and will be dynamically created.
+    """
+
+    __tablename__ = "buckets"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    created_at = Column(
+        DateTime(timezone=True),
+        default=datetime.datetime.now(tz=datetime.timezone.utc),
+        nullable=False,
+    )
+
+    description = Column(String, nullable=True)  # Optional description of the bucket
+
+    # 36 caharacter UUID for the bucket
+    bucket_uuid = Column(
+        String(36), nullable=False, unique=True, index=True
+    )  # UUID for the bucket
+
+    # Relationship to measurements
+    measurements = relationship(
+        "Measurement", back_populates="bucket", cascade="all, delete-orphan"
+    )
+
+    def __repr__(self):
+        return f"<Bucket(id={self.id}, name={self.name})>"
+
+
+class Measurement(Base):
+    __tablename__ = "measurements"
+
+    id = Column(Integer, primary_key=True)
+    bucket_id = Column(Integer, ForeignKey("buckets.id"), nullable=False)
+
+    # Creation timestamp
+    created_at = Column(
+        DateTime(timezone=True),
+        default=datetime.datetime.now(tz=datetime.timezone.utc),
+        nullable=False,
+    )
+
+    # Measurement name
+    name = Column(String, nullable=False)
+
+    # Metadata (TODO Use JSONB for better performance?)
+    measurement_metadata = Column(JSON, nullable=True)
+
+    hypertable_name = Column(
+        String, nullable=False, unique=True
+    )  # Name of the hypertable for this measurement
+
+    # Relationship to parent bucket
+    bucket = relationship("Bucket", back_populates="measurements")
+
+    def __repr__(self):
+        return f"<Measurement(bucket_id={self.bucket_id}, name={self.name}, metadata={self.metadata})>"
+
 
 @timeit_class
 class TimescaleDBDataClient:
@@ -13,6 +85,13 @@ class TimescaleDBDataClient:
         self.engine = create_engine(
             f"postgresql://{user}:{password}@{host}:{port}/{database}"
         )
+
+        # Init sqlalchemy, creating tables if necessary
+        # Create tables
+        Base.metadata.create_all(self.engine)
+
+        # Create session factory
+        # SessionLocal = sessionmaker(bind=engine)
 
     # For compatiblity with BaseImporter interface
     def available_bucket_names(self) -> list[str]:
@@ -124,7 +203,7 @@ class TimescaleDBDataClient:
         # )
 
         csv_buffer = io.StringIO()
-        data.to_csv(csv_buffer, index=False, header=False)
+        data.to_csv(csv_buffer, index=False, header=False, float_format="%.15f")
         csv_buffer.seek(0)
 
         cols = ", ".join(data.columns)
@@ -200,3 +279,33 @@ class TimescaleDBDataClient:
         """
         self.engine.dispose()
         print("TimescaleDB client connection closed.")
+
+
+if __name__ == "__main__":
+    # Example usage
+    client = TimescaleDBDataClient(
+        host="timescaledb",
+        port=5432,
+        user="postgres",
+        password="postgres",
+        database="timescaledb",
+    )
+
+    # Create a bucket
+    client.create_bucket("test_bucket")
+
+    # Create a measurement
+    data = pd.DataFrame(
+        {
+            "time": pd.date_range(start="2023-01-01", periods=10, freq="D"),
+            "value": range(10),
+        }
+    )
+    client.create_hypertable_from_dataframe("test_bucket_measurement", data)
+
+    # Query the data
+    queried_data = client.query_data("test_bucket", "measurement")
+    print(queried_data)
+
+    # Close the client
+    client.close()
