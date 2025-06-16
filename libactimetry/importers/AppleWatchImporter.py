@@ -7,6 +7,7 @@ import uuid
 
 from libactimetry.importers.BaseImporter import BaseImporter
 from libactimetry.db.TimescaleDBDataClient import TimescaleDBDataClient
+from tools.timeit import timeit
 
 
 class AppleWatchImporter(BaseImporter):
@@ -769,34 +770,38 @@ class AppleWatchImporter(BaseImporter):
 
 if __name__ == "__main__":
 
-    """
-    - POSTGRES_USER=postgres
-    - POSTGRES_PASSWORD=postgres
-    - POSTGRES_DB=timescaledb
-    """
+    @timeit
+    def main():
+        """
+        - POSTGRES_USER=postgres
+        - POSTGRES_PASSWORD=postgres
+        - POSTGRES_DB=timescaledb
+        """
 
-    client = TimescaleDBDataClient(
-        host="timescaledb",
-        port=5432,
-        user="postgres",
-        password="postgres",
-        database="timescaledb",
-    )
+        client = TimescaleDBDataClient(
+            host="timescaledb",
+            port=5432,
+            user="postgres",
+            password="postgres",
+            database="timescaledb",
+        )
 
-    buckets: list[str] = client.available_bucket_names()
-    print("Available buckets:", buckets)
+        buckets: list[str] = client.available_bucket_names()
+        print("Available buckets:", buckets)
 
-    # Delete all buckets
-    for bucket in buckets:
-        print(f"Deleting bucket: {bucket}")
-        client.delete_bucket(bucket)
+        # Delete all buckets
+        for bucket in buckets:
+            print(f"Deleting bucket: {bucket}")
+            client.delete_bucket(bucket)
 
-    # Example usage
-    importer = AppleWatchImporter(
-        data_directory="/actimetry-service/tools/influxdb/data/2025-06-09_11-54-11-0",
-        db_client=client,
-        bucket_name="AWI_" + str(uuid.uuid4()),
-    )
+        # Example usage
+        importer = AppleWatchImporter(
+            data_directory="/actimetry-service/tools/influxdb/data/2025-06-09_11-54-11-0",
+            db_client=client,
+            bucket_name="AWI_" + str(uuid.uuid4()),
+        )
 
-    importer.import_data(importer.bucket_name)
-    print("Data import completed.")
+        importer.import_data(importer.bucket_name)
+        print("Data import completed.")
+
+    main()
