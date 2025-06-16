@@ -425,12 +425,8 @@ class TimescaleDBDataClient:
             raise ValueError("Data must be a pandas DataFrame.")
 
         # Ensure the DataFrame has a 'time' column
-        if "time" not in data.columns and data.index.name != "time":
+        if "time" not in data.columns:
             raise ValueError("DataFrame must contain a 'time' column.")
-        if data.index.name != "time":
-            data = data.copy()
-            data.index.name = "time"
-        data.reset_index(inplace=True)
 
         # Ensure the bucket exists
         if bucket_name not in self.get_available_buckets():

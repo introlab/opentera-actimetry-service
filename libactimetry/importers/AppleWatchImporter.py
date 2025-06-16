@@ -15,7 +15,6 @@ class AppleWatchImporter(BaseImporter):
     ):
         BaseImporter.__init__(self, db_client, bucket_name)
         self.data_directory = data_directory
-        self.bucket_name = bucket_name
 
     def import_data_internal(self, bucket_name: str):
         # Implement data import logic here
@@ -46,10 +45,10 @@ class AppleWatchImporter(BaseImporter):
                             self._import_dyskinetic_symptoms_data(
                                 file_path, bucket=bucket_name
                             )
-                        elif file_name == "watch_GPS.data":
-                            self._import_gps_data(file_path, bucket=bucket_name)
                         elif file_name == "watch_Gyroscope.data":
-                            self._import_gyroscope_data(file_path, bucket=bucket_name)
+                            self._import_raw_gyrometer_data(
+                                file_path, bucket=bucket_name
+                            )
                         elif file_name == "watch_Headings.data":
                             self._import_headings_data(file_path, bucket=bucket_name)
                         elif file_name == "watch_HealthKit.data":
@@ -57,7 +56,7 @@ class AppleWatchImporter(BaseImporter):
                         elif file_name == "watch_HeartRate.data":
                             self._import_heart_rate_data(file_path, bucket=bucket_name)
                         elif file_name == "watch_Magnetometer.data":
-                            self._import_magnetometer_data(
+                            self._import_raw_magnetometer_data(
                                 file_path, bucket=bucket_name
                             )
                         elif file_name == "watch_Pedometer.data":
@@ -125,8 +124,7 @@ class AppleWatchImporter(BaseImporter):
                 df = pd.DataFrame(data)
                 # Convert time to datetime
                 df["time"] = pd.to_datetime(df["time"], unit="ms")
-                # Set the time as the index
-                df.set_index("time", inplace=True)
+
                 # Extract activity information and confidence level
                 # Set activity columns based on the detected_activities bitmask as boolean columns
                 df["confidence_level"] = df["detected_activities"] & 0b00000011
@@ -136,8 +134,11 @@ class AppleWatchImporter(BaseImporter):
                 df["stationary_activity"] = (df["detected_activities"] & 0b00100000) > 0
                 df["walking_activity"] = (df["detected_activities"] & 0b01000000) > 0
                 df["unknown_activity"] = (df["detected_activities"] & 0b10000000) > 0
-                # Drop the original detected_activities column
+                # Drop the original detected_activities column ?
                 df.drop(columns=["detected_activities"], inplace=True)
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "Activity", df, metadata={})
 
             except Exception as e:
                 print(f"Error reading header from {file_path}: {e}")
@@ -165,9 +166,7 @@ class AppleWatchImporter(BaseImporter):
                     )
                     return
 
-                check_interval = header_info.get("settings", {}).get(
-                    "check_interval", 1
-                )
+                metadata = header_info.get("settings", {})
 
                 # Use Pandas to read the binary data
                 # Create a structured array to hold the data
@@ -183,9 +182,9 @@ class AppleWatchImporter(BaseImporter):
                 df = pd.DataFrame(data)
                 # Convert time to datetime
                 df["time"] = pd.to_datetime(df["time"], unit="ms")
-                # Set the time as the index
-                df.set_index("time", inplace=True)
-                pass
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "Battery", df, metadata=metadata)
 
             except Exception as e:
                 print(f"Error reading header from {file_path}: {e}")
@@ -194,74 +193,495 @@ class AppleWatchImporter(BaseImporter):
     def _import_beacons_data(self, file_path: str, bucket: str):
         """
         Import beacons data from the specified file path.
+        • time: UInt64 8bytes: time (Unix format) with milliseconds precision
+        • Beacon name : 4Bytes: 'XXXX' is for undefined beacons
+        • RSSI: Int8 – 1 byte: Received Signal Strength Indicator (RSSI) in dBm
         """
-        pass
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 6:
+                    print(
+                        f"Invalid sensor ID for beacons data: {header_info['sensor_id']}"
+                    )
+                    return
+
+                metadata = header_info.get("settings", {})
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("time", "uint64"),
+                        ("beacon_name", "S4"),
+                        ("rssi", "int8"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "Beacons", df, metadata=metadata)
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
 
     def _import_calorie_data(self, file_path: str, bucket: str):
         """
         Import calorie data from the specified file path.
+
+
         """
         pass
 
     def _import_coordinates_data(self, file_path: str, bucket: str):
         """
         Import coordinates data from the specified file path.
+        • Timestamp: UInt64 – 8 bytes: Timestamp (Unix format) with milliseconds precision
+        • Latitude: Float32 – 4 bytes: Latitude position
+        • Longitude: Float32 – 4 bytes: Longitude position
+        • Position accuracy: Float32 – 4 bytes: Accuracy (in meters) for lat/long
+        • Altitude: Float32 – 4 bytes: Altitude (in meters) from sea level
+        • Altitude accuracy: Float32 – 4 bytes: Accuracy (in meters) for altitude
+        • Speed: Float32 – 4 bytes: Speed (meters per second)
+        • Course: Float32 – 4 bytes: Degrees relative to true north
         """
-        pass
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 7:
+                    print(
+                        f"Invalid sensor ID for coordinates data: {header_info['sensor_id']}"
+                    )
+                    return
+
+                metadata = header_info.get("settings", {})
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("time", "uint64"),
+                        ("latitude", "float32"),
+                        ("longitude", "float32"),
+                        ("position_accuracy", "float32"),
+                        ("altitude", "float32"),
+                        ("altitude_accuracy", "float32"),
+                        ("speed", "float32"),
+                        ("course", "float32"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "Coordinates", df, metadata=metadata)
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
 
     def _import_dyskinetic_symptoms_data(self, file_path: str, bucket: str):
         """
-        Import dyskinetic symptoms data from the specified file path.
+        Import dyskinetic symptoms data from the specified file path. #19
+        * Timestamp: UInt64 -- 8 bytes: Timestamp (Unix format) with milliseconds precision
+        * Start Timestamp: Uint64 -- 8 bytes: Timestamp (Unix format) with milliseconds precision on which the measurement started
+        * End Timestamp: Uint64 -- 8 bytes: Timestamp (Unix format) with milliseconds precision on which the measurement ended
+        * Percent likely: Float32 -- 4 bytes: Percent likely that there is dyskinetic movements
         """
-        pass
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 19:
+                    print(
+                        f"Invalid sensor ID for dyskinetic symptoms data: {header_info['sensor_id']}"
+                    )
+                    return
 
-    def _import_gps_data(self, file_path: str, bucket: str):
-        """
-        Import GPS data from the specified file path.
-        """
-        pass
+                metadata = header_info.get("settings", {})
 
-    def _import_gyroscope_data(self, file_path: str, bucket: str):
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("time", "uint64"),
+                        ("start_time", "uint64"),
+                        ("end_time", "uint64"),
+                        ("percent_likely", "float32"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+                df["start_time"] = pd.to_datetime(df["start_time"], unit="ms")
+                df["end_time"] = pd.to_datetime(df["end_time"], unit="ms")
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(
+                    bucket, "DyskineticSymptoms", df, metadata=metadata
+                )
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
+
+    def _import_raw_gyrometer_data(self, file_path: str, bucket: str):
         """
-        Import gyroscope data from the specified file path.
+        Import raw gyrometer data from the specified file path. #10
+        • Timestamp: UInt64 – 8 bytes: Timestamp (Unix format) with milliseconds precision
+        • Gyroscope x-data: Float32 – 4 bytes: Gyroscope data for x-axis (deg/s)
+        • Gyroscope y-data: Float32 – 4 bytes: Gyroscope data for y-axis (deg/s)
+        • Gyroscope z-data: Float32 – 4 bytes: Gyroscope data for z-axis (deg/s)
         """
-        pass
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 10:
+                    print(
+                        f"Invalid sensor ID for raw gyrometer data: {header_info['sensor_id']}"
+                    )
+                    return
+
+                metadata = header_info.get("settings", {})
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("time", "uint64"),
+                        ("x_gyro", "float32"),
+                        ("y_gyro", "float32"),
+                        ("z_gyro", "float32"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "RawGyrometer", df, metadata=metadata)
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
 
     def _import_headings_data(self, file_path: str, bucket: str):
         """
-        Import headings data from the specified file path.
+        Import headings data from the specified file path. #16
+        • Timestamp: UInt64 – 8 bytes: Timestamp (Unix format) with milliseconds precision
+        • True Heading: Float32 – 4 bytes: Heading in degrees relative to true north (0 = North, 180 =
+        South). Only valid if “True Heading Accuracy” is positive.
+        • True Heading Accuracy: Float32 – 4 bytes: Accuracy in degrees of “True Heading”, with
+        negative values representing unreliable or uncalibrated sensor.
+        • Magnetic Heading: Float32 – 4 bytes: Heading in degrees relative to magnetic north.
+        • Magnetometer x-data: Float32 – 4 bytes: x-value of magnetometer (microTeslas)
+        • Magnetometer y-data: Float32 – 4 bytes: y-value of magnetometer (microTeslas)
+        • Magnetometer z-data: Float32 – 4 bytes: z-value of magnetometer (microTeslas)
         """
-        pass
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 16:
+                    print(
+                        f"Invalid sensor ID for headings data: {header_info['sensor_id']}"
+                    )
+                    return
+
+                metadata = header_info.get("settings", {})
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("time", "uint64"),
+                        ("true_heading", "float32"),
+                        ("true_heading_accuracy", "float32"),
+                        ("magnetic_heading", "float32"),
+                        ("x_mag", "float32"),
+                        ("y_mag", "float32"),
+                        ("z_mag", "float32"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "Headings", df, metadata=metadata)
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
 
     def _import_heart_rate_data(self, file_path: str, bucket: str):
         """
-        Import heart rate data from the specified file path.
+        Import heart rate data from the specified file path. #3
+        • Timestamp: UInt64 – 8 bytes: Timestamp (Unix format) with milliseconds precision
+        • Heart Rate: UInt8 – 1 byte: Heart rate in beats per minute (bpm)
         """
-        pass
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 3:
+                    print(
+                        f"Invalid sensor ID for heart rate data: {header_info['sensor_id']}"
+                    )
+                    return
 
-    def _import_magnetometer_data(self, file_path: str, bucket: str):
+                metadata = header_info.get("settings", {})
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("time", "uint64"),
+                        ("heart_rate", "uint8"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "HeartRate", df, metadata=metadata)
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
+
+    def _import_raw_magnetometer_data(self, file_path: str, bucket: str):
         """
-        Import magnetometer data from the specified file path.
+        Import magnetometer data from the specified file path. #17
+        • Timestamp: UInt64 – 8 bytes: Timestamp (Unix format) with milliseconds precision
+        • Magnetometer x-data: Float32 – 4 bytes: x-value of magnetometer (microTeslas)
+        • Magnetometer y-data: Float32 – 4 bytes: y-value of magnetometer (microTeslas)
+        • Magnetometer z-data: Float32 – 4 bytes: z-value of magnetometer (microTeslas)
         """
-        pass
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 17:
+                    print(
+                        f"Invalid sensor ID for raw magnetometer data: {header_info['sensor_id']}"
+                    )
+                    return
+
+                metadata = header_info.get("settings", {})
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("time", "uint64"),
+                        ("x_mag", "float32"),
+                        ("y_mag", "float32"),
+                        ("z_mag", "float32"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "RawMagnetometer", df, metadata=metadata)
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
 
     def _import_pedometer_data(self, file_path: str, bucket: str):
         """
-        Import pedometer data from the specified file path.
+        Import pedometer data from the specified file path. 11
+
+        • Timestamp: UInt64 – 8 bytes: Timestamp (Unix format) with milliseconds precision
+        • Number of steps: UInt32 – 4 bytes: Current total step count from the start of the session
+        • Distance: Float32 – 4 bytes: Current total estimated distance, in meters, from the start of the
+        session. -1.0 if the value is not available on device
+        • AverageActive Pace: Float32 – 4 bytes: Current average pace, in m/s, since the start of the session.
+        -1.0 if the value is not available on device
+        • Current Pace: Float32 – 4 bytes: Current estimated pace, in m/s. -1.0 if the value is not available
+        on device
+        • Current Cadence: Float32 – 4 bytes: Current cadence in steps per second. -1.0 if the value is not
+        available on device
+        • Floors Ascended: Int32 – 4 bytes: Total number of floor ascended since the start of the session.
+        -1.0 if the value is not available on device
+        • Floors Descended: Int32 – 4 bytes: Total number of floor descended since the start of the session.
+        -1.0 if the value is not available on device
         """
-        pass
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 11:
+                    print(
+                        f"Invalid sensor ID for pedometer data: {header_info['sensor_id']}"
+                    )
+                    return
+
+                metadata = header_info.get("settings", {})
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("time", "uint64"),
+                        ("steps", "uint32"),
+                        ("distance", "float32"),
+                        ("average_active_pace", "float32"),
+                        ("current_pace", "float32"),
+                        ("current_cadence", "float32"),
+                        ("floors_ascended", "int32"),
+                        ("floors_descended", "int32"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "Pedometer", df, metadata=metadata)
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
 
     def _import_tremor_data(self, file_path: str, bucket: str):
         """
         Import tremor data from the specified file path.
+
+        • Timestamp: UInt64 – 8 bytes: Timestamp (Unix format) with milliseconds precision
+        • Start Timestamp: Uint64 – 8 bytes: Timestamp (Unix format) with milliseconds precision on
+        which the measurement started
+        • End Timestamp: Uint64 – 8 bytes: Timestamp (Unix format) with milliseconds precision on
+        which the measurement ended
+        • No Tremor Ratio: Float32 – 4 bytes: Ratio of time where no tremor where detected, between 0
+        and 1
+        • Slight Tremor Ratio: Float32 – 4 bytes: Ratio of time where slight tremors where detected,
+        between 0 and 1
+        • Mild Tremor Ratio: Float32 – 4 bytes: Ratio of time where mild tremors where detected, between
+        0 and 1
+        • Moderate Tremor Ratio: Float32 – 4 bytes: Ratio of time where moderate tremors where detected,
+        between 0 and 1
+        • Strong Tremor Ratio: Float32 – 4 bytes: Ratio of time where strong tremors where detected,
+        between 0 and 1
         """
-        pass
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 18:
+                    print(
+                        f"Invalid sensor ID for tremor data: {header_info['sensor_id']}"
+                    )
+                    return
+
+                metadata = header_info.get("settings", {})
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("time", "uint64"),
+                        ("start_time", "uint64"),
+                        ("end_time", "uint64"),
+                        ("no_tremor_ratio", "float32"),
+                        ("slight_tremor_ratio", "float32"),
+                        ("mild_tremor_ratio", "float32"),
+                        ("moderate_tremor_ratio", "float32"),
+                        ("strong_tremor_ratio", "float32"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+                df["start_time"] = pd.to_datetime(df["start_time"], unit="ms")
+                df["end_time"] = pd.to_datetime(df["end_time"], unit="ms")
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "Tremor", df, metadata=metadata)
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
 
     def _import_healthkit_data(self, file_path: str, bucket: str):
         """
-        Import HealthKit data from the specified file path.
+        Import HealthKit data from the specified file path. #15
+        • Timestamp: UInt64 – 8 bytes: Timestamp (Unix format) with milliseconds precision of the samples
+        reception
+        • Start Timestamp: UInt64 – 8 bytes: Sample start timestamp (Unix format) with milliseconds
+        precision
+        • End Timestamp: UInt64 – 8 bytes: Sample end timestamp (Unix format) with milliseconds precision
+        • Type index: UInt16 – 2 byte: Index of the type of this sample in the list of types from the given
+        settings list (see above)
+        • Value: Float64 – 8 bytes: Value of the sample. Units are defined by the type of the sample (see
+        above).
         """
-        pass
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 15:
+                    print(
+                        f"Invalid sensor ID for healthkit data: {header_info['sensor_id']}"
+                    )
+                    return
+
+                metadata = header_info.get("settings", {})
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("time", "uint64"),
+                        ("start_time", "uint64"),
+                        ("end_time", "uint64"),
+                        ("type_index", "uint16"),
+                        ("value", "float64"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+                df["start_time"] = pd.to_datetime(df["start_time"], unit="ms")
+                df["end_time"] = pd.to_datetime(df["end_time"], unit="ms")
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "HealthKit", df, metadata=metadata)
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
 
     def _import_raw_accelerometer_data(self, file_path: str, bucket: str):
         """
@@ -300,8 +720,6 @@ class AppleWatchImporter(BaseImporter):
 
                 # Convert time to datetime
                 df["time"] = pd.to_datetime(df["time"], unit="ms")
-                # Set the time as the index
-                df.set_index("time", inplace=True)
 
                 # Write the DataFrame to the specified bucket
                 self.write_data_frame(bucket, "RawAccelerometer", df, metadata=metadata)
@@ -350,20 +768,11 @@ class AppleWatchImporter(BaseImporter):
 
 
 if __name__ == "__main__":
-    from libactimetry.db.InfluxDBDataClient import InfluxDBDataClient
 
-    # url = "http://influxdb:8086"
-    # token = "my-super-token"
-    # org = "my-org"
-    # bucket = "my-bucket"
-
-    # client = InfluxDBDataClient(
-    #    host="influxdb", port=8086, token="my-super-token", org="my-org"
-    # )
     """
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=timescaledb
+    - POSTGRES_USER=postgres
+    - POSTGRES_PASSWORD=postgres
+    - POSTGRES_DB=timescaledb
     """
 
     client = TimescaleDBDataClient(
@@ -376,6 +785,11 @@ if __name__ == "__main__":
 
     buckets: list[str] = client.available_bucket_names()
     print("Available buckets:", buckets)
+
+    # Delete all buckets
+    for bucket in buckets:
+        print(f"Deleting bucket: {bucket}")
+        client.delete_bucket(bucket)
 
     # Example usage
     importer = AppleWatchImporter(
