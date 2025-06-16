@@ -1,3 +1,4 @@
+import uuid
 from sqlalchemy import create_engine, text
 import pandas as pd
 from tools.timeit import timeit_class
@@ -6,15 +7,16 @@ import io
 from sqlalchemy import Column, Integer, String, Float, DateTime, JSON, ForeignKey
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, sessionmaker
 import datetime
-
+from sqlalchemy import event
 
 Base = declarative_base()
 
 
 class Bucket(Base):
     """
+    Want to have a similar behavior as InfluxDB.
     Bucket which would be a table containing measurements with each measurement having
     a metadata column containing a JSON object with all the metadata and linking to an hypertable with all data.
     The hypertable is created from pandas DataFrame and will be dynamically created.
@@ -22,7 +24,8 @@ class Bucket(Base):
 
     __tablename__ = "buckets"
 
-    id = Column(Integer, primary_key=True)
+    # Auto increment id
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String, nullable=False, unique=True)
     created_at = Column(
         DateTime(timezone=True),
@@ -32,7 +35,7 @@ class Bucket(Base):
 
     description = Column(String, nullable=True)  # Optional description of the bucket
 
-    # 36 caharacter UUID for the bucket
+    # 36 character UUID for the bucket
     bucket_uuid = Column(
         String(36), nullable=False, unique=True, index=True
     )  # UUID for the bucket
@@ -49,7 +52,7 @@ class Bucket(Base):
 class Measurement(Base):
     __tablename__ = "measurements"
 
-    id = Column(Integer, primary_key=True)
+    id = Column(Integer, primary_key=True, autoincrement=True)
     bucket_id = Column(Integer, ForeignKey("buckets.id"), nullable=False)
 
     # Creation timestamp
@@ -76,6 +79,22 @@ class Measurement(Base):
         return f"<Measurement(bucket_id={self.bucket_id}, name={self.name}, metadata={self.metadata})>"
 
 
+# Catch before_delete for Measurement to delete the hypertable
+@event.listens_for(Measurement, "before_delete")
+def before_delete_measurement(mapper, connection, target):
+    """
+    Before deleting a measurement, drop the associated hypertable.
+    """
+    hypertable_name = target.hypertable_name
+    if hypertable_name:
+        try:
+            drop_stmt = f'DROP TABLE IF EXISTS "{hypertable_name}" CASCADE;'
+            connection.execute(text(drop_stmt))
+            print(f"Hypertable '{hypertable_name}' dropped successfully.")
+        except Exception as e:
+            print(f"Error dropping hypertable '{hypertable_name}': {e}")
+
+
 @timeit_class
 class TimescaleDBDataClient:
     def __init__(self, host: str, port: int, user: str, password: str, database: str):
@@ -91,21 +110,142 @@ class TimescaleDBDataClient:
         Base.metadata.create_all(self.engine)
 
         # Create session factory
-        # SessionLocal = sessionmaker(bind=engine)
+        self.session_factory = sessionmaker(bind=self.engine)
 
     # For compatiblity with BaseImporter interface
     def available_bucket_names(self) -> list[str]:
-        return self.available_tables()
+        with self.engine.connect() as conn:
+            # Use sqlachemy to query the buckets
+            query = text("SELECT name FROM buckets;")
+            result = conn.execute(query)
+            buckets = [row[0] for row in result.fetchall()]
+        return buckets
+
+    def available_buckets(self) -> list[Bucket]:
+        """
+        Return the list of available buckets as Bucket objects.
+        """
+        session = self.session_factory()
+        try:
+            buckets = session.query(Bucket).all()
+            # Detach objects from session to avoid session issues
+            for bucket in buckets:
+                session.expunge(bucket)  # Detach from session
+            return buckets
+        except Exception as e:
+            print(f"Error retrieving buckets: {e}")
+            return []
+        finally:
+            session.close()
 
     # For compatibility with BaseImporter interface
     def delete_bucket(self, bucket_name: str) -> bool:
-        return self.delete_table(bucket_name)
+        with self.engine.connect() as conn:
+            try:
+                # Create session
+                session = self.session_factory()
+                bucket = session.query(Bucket).filter_by(name=bucket_name).first()
+                if not bucket:
+                    print(f"Bucket '{bucket_name}' does not exist.")
+                    return False
 
-    def create_bucket(self, bucket_name: str, retention_policy: str = None) -> bool:
+                # Delete the bucket and all its measurements
+                session.delete(bucket)
+                session.commit()
+            except Exception as e:
+                print(f"Error deleting bucket '{bucket_name}': {e}")
+                return False
+        print(f"Bucket '{bucket_name}' deleted successfully.")
+        return True
+
+    def create_bucket(
+        self, bucket_name: str, retention_policy: str = None
+    ) -> Bucket | None:
         """
-        Create a new bucket (hypertable) in TimescaleDB.
+        Create a new bucket in TimescaleDB.
+        A bucket is a table that contains measurements.
+        The bucket will have a unique UUID and a name.
+        The bucket will be created in the public schema.
         """
-        return self.create_table(bucket_name, retention_policy)
+        session = self.session_factory()
+        try:
+            bucket = Bucket()
+            bucket.name = bucket_name
+            # TODO uuid should be the session uuid
+            bucket.bucket_uuid = uuid.uuid4()
+            session.add(bucket)
+            session.commit()
+            bucket_id = bucket.id
+
+        except Exception as e:
+            print(f"Error creating bucket '{bucket_name}': {e}")
+            return None
+        finally:
+            session.close()
+
+        # Get object back
+        new_session = self.session_factory()
+        try:
+            bucket = new_session.query(Bucket).get(bucket_id)
+            new_session.expunge(bucket)  # Detach from session
+            return bucket
+        except Exception as e:
+            print(f"Error retrieving bucket '{bucket_name}': {e}")
+            return None
+        finally:
+            new_session.close()
+
+    def get_available_buckets(self) -> list[str]:
+        """
+        Return the list of buckets
+        """
+        with self.engine.connect() as conn:
+            # Use sqlachemy to query the buckets
+            query = text("SELECT name FROM buckets;")
+            result = conn.execute(query)
+            buckets = [row[0] for row in result.fetchall()]
+        return buckets
+
+    def create_measurement(
+        self, bucket_name: str, measurement_name: str, measurement_metadata: dict = None
+    ) -> Measurement | None:
+        """
+        Create a new measurement in the specified bucket.
+        This will create a new hypertable for the measurement.
+        """
+        # Create session
+        session = self.session_factory()
+        try:
+            bucket = session.query(Bucket).filter_by(name=bucket_name).first()
+            if not bucket:
+                print(f"Bucket '{bucket_name}' does not exist.")
+                return None
+
+            measurement = Measurement(
+                name=measurement_name,
+                bucket=bucket,
+                hypertable_name=f"{bucket_name}_{measurement_name}",
+                measurement_metadata=measurement_metadata or {},
+            )
+            session.add(measurement)
+            session.commit()
+            measurement_id = measurement.id
+
+        except Exception as e:
+            session.rollback()
+            print(f"Error creating measurement: {e}")
+            return None
+        finally:
+            session.close()
+
+        # Get object back
+        new_session = self.session_factory()
+        try:
+            measurement = new_session.query(Measurement).get(measurement_id)
+            new_session.expunge(measurement)  # Detach from session
+            return measurement
+        finally:
+            new_session.close()
 
     def available_tables(self) -> list[str]:
         """
@@ -117,7 +257,40 @@ class TimescaleDBDataClient:
             tables = [row[0] for row in result.fetchall()]
         return tables
 
-    def create_hypertable_from_dataframe(
+    def _get_measurement_from_bucket(
+        self, bucket_name: str, measurement_name: str
+    ) -> Measurement | None:
+        """
+        Get a measurement from a bucket by name.
+        This is a helper method to retrieve the measurement object.
+        """
+        session = self.session_factory()
+        try:
+            bucket = session.query(Bucket).filter_by(name=bucket_name).first()
+            if not bucket:
+                print(f"Bucket '{bucket_name}' does not exist.")
+                return None
+
+            measurement = (
+                session.query(Measurement)
+                .filter_by(name=measurement_name, bucket_id=bucket.id)
+                .first()
+            )
+            # Detach the measurement from the session to avoid session issues
+            if measurement:
+                session.expunge(measurement)  # Detach from session
+            else:
+                print(
+                    f"Measurement '{measurement_name}' does not exist in bucket '{bucket_name}'."
+                )
+            return measurement
+        except Exception as e:
+            print(f"Error retrieving measurement: {e}")
+            return None
+        finally:
+            session.close()
+
+    def _create_hypertable_from_dataframe(
         self,
         table_name: str,
         data: pd.DataFrame,
@@ -130,14 +303,10 @@ class TimescaleDBDataClient:
         """
         if table_name in self.available_tables():
             print(f"Table '{table_name}' already exists.")
-            # Delete database
-            self.delete_table(table_name)
+            return False
 
-        # Prepare the DataFrame: make sure the time index is a proper column
-        if data.index.name != "time":
-            data = data.copy()
-            data.index.name = "time"
-        data.reset_index(inplace=True)
+        if "time" not in data.columns:
+            raise ValueError("DataFrame must contain a 'time' column.")
 
         # Step 1: Map Pandas dtypes to PostgreSQL types
         def map_dtype(dtype):
@@ -170,6 +339,7 @@ class TimescaleDBDataClient:
             """
             con.execute(text(create_stmt))
             con.commit()
+
             try:
                 hypertable_stmt = (
                     f"""SELECT create_hypertable('"{table_name}"', 'time');"""
@@ -203,7 +373,8 @@ class TimescaleDBDataClient:
         # )
 
         csv_buffer = io.StringIO()
-        data.to_csv(csv_buffer, index=False, header=False, float_format="%.15f")
+        # For more precision use float_format='%.6f' or similar
+        data.to_csv(csv_buffer, index=False, header=False)
         csv_buffer.seek(0)
 
         cols = ", ".join(data.columns)
@@ -217,26 +388,23 @@ class TimescaleDBDataClient:
 
         return True
 
-    def create_table(self, table_name: str, retention_policy: str = None) -> bool:
-        return True
+    # def delete_table(self, table_name: str) -> bool:
+    #     """
+    #     Delete a specified table from TimescaleDB.
+    #     """
+    #     if table_name not in self.available_tables():
+    #         print(f"Table '{table_name}' does not exist.")
+    #         return False
 
-    def delete_table(self, table_name: str) -> bool:
-        """
-        Delete a specified table from TimescaleDB.
-        """
-        if table_name not in self.available_tables():
-            print(f"Table '{table_name}' does not exist.")
-            return False
-
-        with self.engine.connect() as con:
-            try:
-                delete_stmt = f"""DROP TABLE "{table_name}";"""
-                con.execute(text(delete_stmt))
-                con.commit()
-                print(f"Table '{table_name}' deleted successfully.")
-            except Exception as e:
-                print(f"Error deleting table '{table_name}': {e}")
-        return True
+    #     with self.engine.connect() as con:
+    #         try:
+    #             delete_stmt = f"""DROP TABLE "{table_name}";"""
+    #             con.execute(text(delete_stmt))
+    #             con.commit()
+    #             print(f"Table '{table_name}' deleted successfully.")
+    #         except Exception as e:
+    #             print(f"Error deleting table '{table_name}': {e}")
+    #     return True
 
     # For compatibility with BaseImporter interface
     def write_data(
@@ -244,7 +412,7 @@ class TimescaleDBDataClient:
         bucket_name: str,
         measurement_name: str,
         data: pd.DataFrame,
-        tag_columns: list[str] = None,
+        metadata: dict = None,
     ) -> bool:
         """
         Write data from a pandas DataFrame to the specified hypertable.
@@ -252,25 +420,62 @@ class TimescaleDBDataClient:
         and columns for frequency, source, and any additional data. Additional data is stored in the
         'data' column using JSONB; adapt as needed.
         """
-        # if bucket_name not in self.available_tables():
-        #    raise ValueError(f"Table '{bucket_name}' does not exist.")
 
-        table_name = bucket_name + "_" + measurement_name
+        if not isinstance(data, pd.DataFrame):
+            raise ValueError("Data must be a pandas DataFrame.")
+
+        # Ensure the DataFrame has a 'time' column
+        if "time" not in data.columns and data.index.name != "time":
+            raise ValueError("DataFrame must contain a 'time' column.")
+        if data.index.name != "time":
+            data = data.copy()
+            data.index.name = "time"
+        data.reset_index(inplace=True)
+
+        # Ensure the bucket exists
+        if bucket_name not in self.get_available_buckets():
+            # Creat the bucket if it does not exist
+            if not self.create_bucket(bucket_name):
+                print(f"Failed to create bucket '{bucket_name}'.")
+                return False
+
+        # Create the measurement
+        measurement = self.create_measurement(
+            bucket_name, measurement_name, measurement_metadata=metadata
+        )
+        if not measurement:
+            print(
+                f"Failed to create measurement '{measurement_name}' in bucket '{bucket_name}'."
+            )
+            return False
+
         try:
-            return self.create_hypertable_from_dataframe(table_name, data, None)
+            return self._create_hypertable_from_dataframe(
+                measurement.hypertable_name, data, None
+            )
         except Exception as e:
-            print(f"Error writing data to table '{table_name}': {e}")
+            print(f"Error writing data to table '{measurement.hypertable_name}': {e}")
             return False
 
     def query_data(self, bucket_name: str, measurement_name: str) -> pd.DataFrame:
         """
         Query data from a specified hypertable in TimescaleDB.
         """
-        table_name = bucket_name + "_" + measurement_name
+
+        # Get measurement
+        measurement = self._get_measurement_from_bucket(bucket_name, measurement_name)
+
+        if not measurement:
+            raise ValueError(
+                f"Measurement '{measurement_name}' does not exist in bucket '{bucket_name}'."
+            )
+
+        table_name = measurement.hypertable_name
         if table_name not in self.available_tables():
             raise ValueError(f"Table '{table_name}' does not exist.")
         query = f"""SELECT * FROM "{table_name}";"""
         df = pd.read_sql(query, self.engine)
+        print(f"Query executed successfully: {df.shape[0]} records retrieved.")
         return df
 
     def close(self):
@@ -292,20 +497,31 @@ if __name__ == "__main__":
     )
 
     # Create a bucket
-    client.create_bucket("test_bucket")
+    bucket_name = "test_" + str(uuid.uuid4())
+    client.create_bucket(bucket_name)
+
+    # Get available buckets
+    buckets = client.get_available_buckets()
+
+    print("Available buckets:", buckets)
 
     # Create a measurement
-    data = pd.DataFrame(
-        {
-            "time": pd.date_range(start="2023-01-01", periods=10, freq="D"),
-            "value": range(10),
-        }
-    )
-    client.create_hypertable_from_dataframe("test_bucket_measurement", data)
+    measurement_name = "measurement_" + str(uuid.uuid4())
+    measurement = client.create_measurement(bucket_name, measurement_name)
+    # print(f"Measurement '{measurement_name}' created in bucket '{bucket_name}'.")
 
-    # Query the data
-    queried_data = client.query_data("test_bucket", "measurement")
-    print(queried_data)
+    # # Create a measurement
+    # data = pd.DataFrame(
+    #     {
+    #         "time": pd.date_range(start="2023-01-01", periods=10, freq="D"),
+    #         "value": range(10),
+    #     }
+    # )
+    # client.create_hypertable_from_dataframe("test_bucket_measurement", data)
 
-    # Close the client
-    client.close()
+    # # Query the data
+    # queried_data = client.query_data(bucket_name, "measurement")
+    # print(queried_data)
+
+    # # Close the client
+    # client.close()

@@ -1,4 +1,4 @@
-from libactimetry.db.InfluxDBDataClient import InfluxDBDataClient
+from libactimetry.db.TimescaleDBDataClient import TimescaleDBDataClient
 from abc import ABC, abstractmethod
 import pandas as pd
 
@@ -60,7 +60,7 @@ class BaseImporter(ABC):
     Base class for importers.
     """
 
-    def __init__(self, client: InfluxDBDataClient, bucket_name: str):
+    def __init__(self, client: TimescaleDBDataClient, bucket_name: str):
         self.db_client = client
         self.bucket_name = bucket_name
 
@@ -75,7 +75,7 @@ class BaseImporter(ABC):
     @abstractmethod
     def import_data_internal(self, bucket_name: str):
         """
-        Internal method to import data into the specified InfluxDB bucket.
+        Internal method to import data into the specified TimeScaleDB/InfluxDB bucket.
         This method should be implemented by subclasses.
         """
         raise NotImplementedError("Subclasses must implement this method.")
@@ -83,7 +83,7 @@ class BaseImporter(ABC):
     @abstractmethod
     def delete_data(self, bucket_name: str):
         """
-        Delete all data from the specified InfluxDB bucket.
+        Delete all data from the specified TimeScaleDB/InfluxDB bucket.
         """
         if bucket_name not in self.db_client.available_bucket_names():
             raise BucketNotFoundError(bucket_name)
@@ -97,14 +97,14 @@ class BaseImporter(ABC):
         bucket_name: str,
         measurement_name: str,
         df: pd.DataFrame,
-        tag_columns: list[str] = None,
+        metadata: dict = None,
     ):
         """
-        Save the DataFrame to the specified InfluxDB bucket.
+        Save the DataFrame to the specified TimeScaleDB/InfluxDB bucket.
         """
         # Write the DataFrame to the bucket
         if not self.db_client.write_data(
-            bucket_name, measurement_name, df, tag_columns=tag_columns
+            bucket_name, measurement_name, df, metadata=metadata
         ):
             raise BucketWriteError(bucket_name, "Failed to write data.")
 

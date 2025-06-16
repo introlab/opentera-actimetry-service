@@ -3,18 +3,19 @@ import json
 import struct
 import numpy as np
 import os
+import uuid
 
 from libactimetry.importers.BaseImporter import BaseImporter
-from libactimetry.db.InfluxDBDataClient import InfluxDBDataClient
 from libactimetry.db.TimescaleDBDataClient import TimescaleDBDataClient
 
 
 class AppleWatchImporter(BaseImporter):
     def __init__(
-        self, data_directory: str, db_client: InfluxDBDataClient, bucket_name: str
+        self, data_directory: str, db_client: TimescaleDBDataClient, bucket_name: str
     ):
         BaseImporter.__init__(self, db_client, bucket_name)
         self.data_directory = data_directory
+        self.bucket_name = bucket_name
 
     def import_data_internal(self, bucket_name: str):
         # Implement data import logic here
@@ -281,7 +282,7 @@ class AppleWatchImporter(BaseImporter):
                     )
                     return
 
-                frequency = header_info.get("settings", {}).get("frequency", 50)
+                metadata = header_info.get("settings", {})
 
                 # Use Pandas to read the binary data
                 # Create a structured array to hold the data
@@ -297,19 +298,13 @@ class AppleWatchImporter(BaseImporter):
                 # Convert the structured array to a DataFrame
                 df = pd.DataFrame(data)
 
-                # Add metadata to the DataFrame
-                df["frequency"] = frequency
-                df["source"] = "Apple Watch"
-
                 # Convert time to datetime
                 df["time"] = pd.to_datetime(df["time"], unit="ms")
                 # Set the time as the index
                 df.set_index("time", inplace=True)
 
                 # Write the DataFrame to the specified bucket
-                self.write_data_frame(
-                    bucket, "RawAccelerometer", df, tag_columns=["source", "frequency"]
-                )
+                self.write_data_frame(bucket, "RawAccelerometer", df, metadata=metadata)
 
             except Exception as e:
                 print(f"Error reading header from {file_path}: {e}")
@@ -386,9 +381,8 @@ if __name__ == "__main__":
     importer = AppleWatchImporter(
         data_directory="/actimetry-service/tools/influxdb/data/2025-06-09_11-54-11-0",
         db_client=client,
-        bucket_name="my_bucket2",
+        bucket_name="AWI_" + str(uuid.uuid4()),
     )
 
-    importer.delete_data("my_bucket2")
-    importer.import_data("my_bucket2")
+    importer.import_data(importer.bucket_name)
     print("Data import completed.")
