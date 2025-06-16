@@ -374,7 +374,7 @@ class TimescaleDBDataClient:
 
         csv_buffer = io.StringIO()
         # For more precision use float_format='%.6f' or similar
-        data.to_csv(csv_buffer, index=False, header=False)
+        data.to_csv(csv_buffer, index=False, float_format="%.12f", header=False)
         csv_buffer.seek(0)
 
         cols = ", ".join(data.columns)
