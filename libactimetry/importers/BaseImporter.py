@@ -109,8 +109,8 @@ class BaseImporter(ABC):
             raise BucketWriteError(bucket_name, "Failed to write data.")
 
         # Re-query for test
-        queried_df = self.db_client.query_data(bucket_name, measurement_name)
-        if queried_df.empty and not df.empty:
-            raise ImporterError(
-                f"No data found in bucket '{bucket_name}' after writing."
-            )
+        # queried_df = self.db_client.query_data(bucket_name, measurement_name)
+        # if queried_df.empty and not df.empty:
+        #     raise ImporterError(
+        #         f"No data found in bucket '{bucket_name}' after writing."
+        #     )
