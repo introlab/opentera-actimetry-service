@@ -363,7 +363,21 @@ class TimescaleDBDataClient:
                 con.rollback()
                 return False
 
-        # Step 4: Insert data into the hypertable
+        # Step 4: Configure compression for the hypertable with the time column using ALTER TABLE
+        with self.engine.connect() as con:
+            try:
+                alter_stmt = f'ALTER TABLE "{table_name}" SET (timescaledb.compress = true, timescaledb.compress_orderby = "time DESC");'
+                con.execute(text(alter_stmt))
+                print(f"Compression settings applied to hypertable '{table_name}'.")
+                con.commit()
+            except Exception as e:
+                print(
+                    f"Error applying compression settings to hypertable '{table_name}': {e}"
+                )
+                con.rollback()
+                return False
+
+        # Step 5: Insert data into the hypertable
 
         total_rows = len(data)
         processed_rows = 0
