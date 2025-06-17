@@ -68,6 +68,10 @@ class AppleWatchImporter(BaseImporter):
                             )
                         elif file_name == "watch_Tremor.data":
                             self._import_tremor_data(file_path, bucket=bucket_name)
+                        elif file_name == "watch_ProcessedMotion.data":
+                            self._import_processed_motion_data(
+                                file_path, bucket=bucket_name
+                            )
 
                         # TODO Do something with watch_logs.txt ?
 
@@ -84,6 +88,76 @@ class AppleWatchImporter(BaseImporter):
         Delete all data from the specified InfluxDB bucket.
         """
         self.db_client.delete_bucket(bucket_name)
+
+    def _import_processed_motion_data(self, file_path: str, bucket: str):
+        """
+        Import processed motion data from the specified file path. #4
+
+        • Timestamp: UInt64 – 8 bytes: Timestamp (Unix format) with milliseconds precision
+        • Accelerometer x-data: Float32 – 4 bytes: Accelerometer data for x-axis (g)
+        • Accelerometer y-data: Float32 – 4 bytes: Accelerometer data for y-axis (g)
+        • Accelerometer z-data: Float32 – 4 bytes: Accelerometer data for z-axis (g)
+        • Gravity vector x-data: Float32 – 4 bytes: Gravity vector data for x-axis (g)
+        • Gravity vector y-data: Float32 – 4 bytes: Gravity vector data for y-axis (g)
+        • Gravity vector z-data: Float32 – 4 bytes: Gravity vector data for z-axis (g)
+        • Gyroscope x-data: Float32 – 4 bytes: Gyroscope data for x-axis (deg/s)
+        • Gyroscope y-data: Float32 – 4 bytes: Gyroscope data for y-axis (deg/s)
+        • Gyroscope z-data: Float32 – 4 bytes: Gyroscope data for z-axis (deg/s)
+        • Magnetometer x-data: Float32 – 4 bytes: Magnetometer data for x-axis (μT)
+        • Magnetometer y-data: Float32 – 4 bytes: Magnetometer data for y-axis (μT)
+        • Magnetometer z-data: Float32 – 4 bytes: Magnetometer data for z-axis (μT)
+        • Attitude quaternion w-data: Float32 – 4 bytes: w (q0) component of attitude quaternion
+        • Attitude quaternion x-data: Float32 – 4 bytes: x component of attitude quaternion
+        • Attitude quaternion y-data: Float32 – 4 bytes: y component of attitude quaternion
+        • Attitude quaternion z-data: Float32 – 4 bytes: z component of attitude quaternion
+        """
+        with open(file_path, "rb") as file:
+            # Read the binary data from
+            try:
+                header_info = self._read_header(file)
+                if header_info["sensor_id"] != 4:
+                    print(
+                        f"Invalid sensor ID for processed motion data: {header_info['sensor_id']}"
+                    )
+                    return
+
+                metadata = header_info.get("settings", {})
+
+                # Use Pandas to read the binary data
+                # Create a structured array to hold the data
+                dtype = np.dtype(
+                    [
+                        ("time", "uint64"),
+                        ("x_acc", "float32"),
+                        ("y_acc", "float32"),
+                        ("z_acc", "float32"),
+                        ("x_gravity", "float32"),
+                        ("y_gravity", "float32"),
+                        ("z_gravity", "float32"),
+                        ("x_gyro", "float32"),
+                        ("y_gyro", "float32"),
+                        ("z_gyro", "float32"),
+                        ("x_mag", "float32"),
+                        ("y_mag", "float32"),
+                        ("z_mag", "float32"),
+                        ("w_quat", "float32"),
+                        ("x_quat", "float32"),
+                        ("y_quat", "float32"),
+                        ("z_quat", "float32"),
+                    ]
+                )
+                data = np.fromfile(file, dtype=dtype)
+                # Convert the structured array to a DataFrame
+                df = pd.DataFrame(data)
+                # Convert time to datetime
+                df["time"] = pd.to_datetime(df["time"], unit="ms")
+
+                # Write the DataFrame to the specified bucket
+                self.write_data_frame(bucket, "ProcessedMotion", df, metadata=metadata)
+
+            except Exception as e:
+                print(f"Error reading header from {file_path}: {e}")
+                return
 
     def _import_activity_data(self, file_path: str, bucket: str):
         """
@@ -796,7 +870,7 @@ if __name__ == "__main__":
 
         # Example usage
         importer = AppleWatchImporter(
-            data_directory="/actimetry-service/tools/influxdb/data/2025-06-09_11-54-11-0",
+            data_directory="/actimetry-service/tools/influxdb/data/test-poignet",
             db_client=client,
             bucket_name="AWI_" + str(uuid.uuid4()),
         )
