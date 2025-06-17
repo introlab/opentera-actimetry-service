@@ -362,29 +362,47 @@ class TimescaleDBDataClient:
                 print(f"Error creating hypertable '{table_name}': {e}")
                 con.rollback()
                 return False
+
         # Step 4: Insert data into the hypertable
-        # data.to_sql(
-        #     table_name,
-        #     con=self.engine,
-        #     if_exists="append",
-        #     index=False,
-        #     method="multi",
-        #     chunksize=1000,
-        # )
 
-        csv_buffer = io.StringIO()
-        # For more precision use float_format='%.6f' or similar
-        data.to_csv(csv_buffer, index=False, float_format="%.12f", header=False)
-        csv_buffer.seek(0)
+        total_rows = len(data)
+        processed_rows = 0
+        chunk_size = 200000  # Number of rows to insert at a time
 
-        cols = ", ".join(data.columns)
-        copy_sql = f"""COPY "{table_name}" ({cols}) FROM STDIN WITH (FORMAT CSV);"""
-        # Utiliser une connexion brute pour exécuter COPY
         with self.engine.connect() as conn:
             raw_conn = conn.connection
             cursor = raw_conn.cursor()
-            cursor.copy_expert(copy_sql, csv_buffer)
-            raw_conn.commit()
+
+            try:
+                for start_idx in range(0, total_rows, chunk_size):
+                    end_idx = min(start_idx + chunk_size, total_rows)
+                    chunk = data.iloc[start_idx:end_idx]
+
+                    # Create CSV buffer for this chunk, , float_format="%.12f"
+                    csv_buffer = io.StringIO()
+                    chunk.to_csv(csv_buffer, index=False, header=False)
+                    csv_buffer.seek(0)
+
+                    # Insert chunk using COPY
+                    cols = ", ".join(data.columns)
+                    copy_sql = f"""COPY "{table_name}" ({cols}) FROM STDIN WITH (FORMAT CSV);"""
+                    cursor.copy_expert(copy_sql, csv_buffer)
+
+                    processed_rows += len(chunk)
+                    print(
+                        f"Processed {processed_rows}/{total_rows} rows ({processed_rows/total_rows*100:.1f}%)"
+                    )
+
+                    # Clear buffer to free memory
+                    csv_buffer.close()
+
+                raw_conn.commit()
+                print(f"Successfully inserted {total_rows} rows into '{table_name}'")
+
+            except Exception as e:
+                raw_conn.rollback()
+                print(f"Error inserting data: {e}")
+                return False
 
         return True
 
