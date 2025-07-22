@@ -153,7 +153,7 @@ def create_user_roles_and_user_groups(server_url: str, headers: str, service_inf
 
     return True
 
-def create_service(username: str, password: str, server_url: str, service_key: str) -> bool:
+def create_service(username: str, password: str, server_url: str, service_key: str, exported_infos: dict = {}) -> bool:
 
     headers = {'Authorization': _basic_auth_str(username, password)}
     params = {'service_key': service_key}
@@ -186,6 +186,7 @@ def create_service(username: str, password: str, server_url: str, service_key: s
                 return False
 
         service_info = response.json()[0]
+        exported_infos.update(service_info)  # Update reference dictionnary with infos
 
         print(f"Service created with id: {service_info['id_service']}")
         if not create_user_roles_and_user_groups(server_url, headers, service_info):

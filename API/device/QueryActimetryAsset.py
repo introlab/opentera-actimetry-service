@@ -51,7 +51,10 @@ class QueryActimetryAsset(Resource):
         if asset is None:
             return gettext('No asset found'), 404
 
-        src_dir = flask_app.config['UPLOAD_FOLDER']
+        if not self.test:
+            src_dir = Globals.config_man.actimetry_service_config['files_directory']
+        else:
+            src_dir = '.'
 
         filename = asset.asset_original_filename
         return send_file(src_dir + '/' + str(asset.asset_uuid), as_attachment=True, download_name=filename)
@@ -158,7 +161,7 @@ class QueryActimetryAsset(Resource):
                 asset_json['id_device'] = current_device_client.id_device
 
         # Set asset managed to this service
-        asset_json['asset_service_uuid'] = Globals.service.service_info['service_uuid']
+        asset_json['asset_service_uuid'] = Globals.config_man.service_config["ServiceUUID"]
 
         # Set asset type if missing
         original_filename = secure_filename(file.filename)
@@ -184,8 +187,10 @@ class QueryActimetryAsset(Resource):
         # Create the asset in the local database
         new_asset_json = response.json()[0]
         asset_uuid = new_asset_json['asset_uuid']
-
-        filename = os.path.join(flask_app.config['UPLOAD_FOLDER'], asset_uuid)
+        if not self.test:
+            filename = os.path.join(Globals.config_man.actimetry_service_config['files_directory'], asset_uuid)
+        else:
+            filename = os.path.join('.', asset_uuid)
 
         file_size = file.content_length
         if file_size == 0:
@@ -244,17 +249,21 @@ class QueryActimetryAsset(Resource):
                         403: 'Access denied to the requested asset'})
     @ServiceAccessManager.service_or_others_token_required(allow_dynamic_tokens=True, allow_static_tokens=False)
     def delete(self):
-        parser = delete_parser
+        return gettext('Forbidden for security reasons'), 403
 
-        args = parser.parse_args()
-        uuid_todel = args['uuid']
-
-        if not Globals.service.has_access_to_asset(args['access_token'], uuid_todel):
-            return gettext('Access denied to asset'), 403
-
-        # Delete from OpenTera Server
-        response = Globals.service.delete_from_opentera('/api/service/assets', {'uuid': uuid_todel})
-        if response.status_code != 200:
-            return gettext('Unable to delete asset') + ': ' + response.text, response.status_code
-
-        return '', 200
+        # if current_login_type != LoginType.DEVICE_LOGIN:
+        #     return gettext('Invalid token type'), 403
+        # parser = delete_parser
+        #
+        # args = parser.parse_args()
+        # uuid_todel = args['uuid']
+        #
+        # if not Globals.service.has_access_to_asset(args['access_token'], uuid_todel):
+        #     return gettext('Access denied to asset'), 403
+        #
+        # # Delete from OpenTera Server
+        # response = Globals.service.delete_from_opentera('/api/service/assets', {'uuid': uuid_todel})
+        # if response.status_code != 200:
+        #     return gettext('Unable to delete asset') + ': ' + response.text, response.status_code
+        #
+        # return '', 200

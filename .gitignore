@@ -166,3 +166,4 @@ libs
 # File upload directories
 files/
 tools/influxdb/data
+CMakeFiles

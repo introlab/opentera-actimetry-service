@@ -78,6 +78,7 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         devices = self._service.get_from_opentera_with_token(token=self.admin_user_token,
                                                              api_url='/api/user/devices')
         self.device_token = devices.json()[0]['device_token']
+        self.id_device = devices.json()[0]['id_device']
         participants = self._service.get_from_opentera_with_token(token=self.admin_user_token,
                                                                   api_url='/api/user/participants',
                                                                   params={'id_project': 1})
@@ -232,6 +233,17 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
             endpoint = self.test_endpoint
         headers = {"Authorization": "OpenTera " + token}
         return client.post(endpoint, headers=headers, query_string=params, json=json)
+
+    def _post_file_with_token_auth(self, client: FlaskClient, token: str = '', files: dict = None,
+                                   params: dict = None, endpoint: str = None):
+        if params is None:
+            params = {}
+        if endpoint is None:
+            endpoint = self.test_endpoint
+        headers = {'Authorization': 'OpenTera ' + token}
+
+        return client.post(endpoint, headers=headers, query_string=params, data=files,
+                           content_type='multipart/form-data')
 
     def _delete_with_token_auth(
         self,

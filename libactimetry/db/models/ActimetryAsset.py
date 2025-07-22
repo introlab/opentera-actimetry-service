@@ -17,12 +17,12 @@ class ActimetryAsset(BaseModel):
     ActimetryAsset model representing an asset in the Actimetry system. This is related to a raw data that is uploaded to the server.
     """
     __tablename__ = "t_actimetry_assets"
-    # id_asset = Column(Integer, Sequence('id_asset_sequence'), primary_key=True, autoincrement=True)
+    id_asset = Column(Integer, Sequence('id_asset_sequence'), primary_key=True, autoincrement=True)
     id_collection = Column(Integer, nullable=False)  # Collection ID, usually equal to id_session
-    asset_uuid = Column(UUID, nullable=False, unique=True, primary_key=True)
+    asset_uuid = Column(String, nullable=False, unique=True)
     asset_original_filename = Column(String, nullable=False)
     asset_file_size = Column(BigInteger, nullable=False)
-    asset_status = Column(SmallInteger, nullable=False, default=ActimetryAssetStatus.STATUS_UNPROCESSED)
+    asset_status = Column(SmallInteger, nullable=False, default=ActimetryAssetStatus.STATUS_UNPROCESSED.value)
 
     @staticmethod
     def get_asset_for_uuid(uuid_asset: str):

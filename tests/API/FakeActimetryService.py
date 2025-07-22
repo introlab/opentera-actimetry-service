@@ -15,6 +15,7 @@ from opentera.services.ServiceOpenTeraWithAssets import ServiceOpenTeraWithAsset
 from opentera.redis.RedisVars import RedisVars
 from opentera.services.ServiceAccessManager import ServiceAccessManager
 
+import Globals
 from FlaskModule import FlaskModule, get_locale, get_timezone
 from FlaskModule import CustomAPI, authorizations
 from ConfigManager import ConfigManager
@@ -161,12 +162,12 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
             ServiceOpenTeraWithAssets.__init__(
                 self,
                 self.config_man,
-                {
-                    "service_key": self.config_man.service_config["service_key"],
-                    "id_service": id_service,
-                },
+                service_info
+                # {
+                #     "service_key": self.config_man.service_config["service_key"],
+                #     "id_service": id_service,
+                # },
             )
-
         # Setup modules
         self.flask_module = FakeFlaskModule(self.config_man, self.flask_app, self)
 
@@ -181,11 +182,13 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
         # Create service
         from tools.create_actimetry_service import create_service
 
+        service_infos = {}
         if not create_service(
-            "admin", "admin", server_url, self.config_man.service_config["service_key"]
+            "admin", "admin", server_url, self.config_man.service_config["service_key"], service_infos
         ):
             # TODO Raise exception
             pass
+        self.service_info = service_infos
 
     def setup_site_access_to_service(
         self, site_id: int, update_projects: bool = True
