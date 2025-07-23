@@ -1,4 +1,4 @@
-from BaseModel import BaseModel
+from libactimetry.db.models.BaseModel import BaseModel
 from sqlalchemy import Column, Integer, String, ForeignKey, Sequence, TIMESTAMP, func, exc, JSON
 from sqlalchemy.orm import relationship
 
@@ -30,7 +30,7 @@ class ActimetryDatabase(BaseModel):
     database_uuid = Column(String(36), nullable=False, unique=True)
     database_name = Column(String, nullable=False)
     database_type = Column(Integer, nullable=False, default=ActimetryDatabaseType.DATABASETYPE_TIMESERIES)
-    database_parameters = Column(JSON, nullble=True)  # Specific database parameter, such as connection settings
+    database_parameters = Column(JSON, nullable=True)  # Specific database parameter, such as connection settings
     database_datetime = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
     database_expiration_datetime = Column(TIMESTAMP(timezone=True), nullable=True)
 

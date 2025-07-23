@@ -176,7 +176,8 @@ def create_service(username: str, password: str, server_url: str, service_key: s
                         "service_key": service_key,
                         "service_endpoint_participant": "/participant",
                         "service_endpoint_user": "/user",
-                        "service_endpoint_device": "/device"
+                        "service_endpoint_device": "/device",
+                        "service_has_assets": True
                 }
             }
 

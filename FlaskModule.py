@@ -328,9 +328,9 @@ class FlaskModule(BaseModule):
         kwargs = {"flask_module": self, "service": self.service}
 
 
-@flask_app.errorhandler(404)
-def page_not_found(e):
-    return flask_app.send_static_file("404.html")
+# @flask_app.errorhandler(404)
+# def page_not_found(e):
+#     return flask_app.send_static_file("404.html")
 
 
 @flask_app.after_request

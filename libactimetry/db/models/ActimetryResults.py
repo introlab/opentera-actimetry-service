@@ -1,4 +1,4 @@
-from BaseModel import BaseModel
+from libactimetry.db.models.BaseModel import BaseModel
 from sqlalchemy import Column, Integer, String, ForeignKey, Sequence, TIMESTAMP, func, JSON
 from sqlalchemy.orm import relationship
 
