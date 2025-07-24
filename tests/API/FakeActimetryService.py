@@ -85,29 +85,38 @@ class FakeFlaskModule(BaseModule):
     def setup_fake_user_api(self, flask_app):
         with flask_app.app_context():
             # Setup Fake API
-            kwargs = {'flaskModule': self,
-                      'test': True}
+            additional_args = {
+                "test": True,
+                "service": self.service,
+                "flask_module": self,
+            }
 
             # The trick is to initialize main server api to the newly created namespace
-            FlaskModule.init_user_api(self, self.user_api_namespace, kwargs)
+            FlaskModule.init_user_api(self, self.user_api_namespace, additional_args)
 
     def setup_fake_participant_api(self, flask_app):
         with flask_app.app_context():
             # Setup Fake API
-            kwargs = {'flaskModule': self,
-                      'test': True}
+            additional_args = {
+                "test": True,
+                "service": self.service,
+                "flask_module": self,
+            }
 
             # The trick is to initialize main server api to the newly created namespace
-            FlaskModule.init_participant_api(self, self.participant_api_namespace, kwargs)
+            FlaskModule.init_participant_api(self, self.participant_api_namespace, additional_args)
 
     def setup_fake_device_api(self, flask_app):
         with flask_app.app_context():
             # Setup Fake API
-            kwargs = {'flaskModule': self,
-                      'test': True}
+            additional_args = {
+                "test": True,
+                "service": self.service,
+                "flask_module": self,
+            }
 
             # The trick is to initialize main server api to the newly created namespace
-            FlaskModule.init_device_api(self, self.device_api_namespace, kwargs)
+            FlaskModule.init_device_api(self, self.device_api_namespace, additional_args)
 
 
 class FakeActimetryService(ServiceOpenTeraWithAssets):
@@ -354,7 +363,8 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
         self, token: str, api_url: str, params: dict = None, additional_headers: dict = None
     ) -> Response:
         headers = {"Authorization": f"OpenTera {token}"}
-        headers.update(additional_headers)
+        if additional_headers:
+            headers.update(additional_headers)
         server_url = f'https://{self.config_man.backend_config["hostname"]}:{self.config_man.backend_config["port"]}'
         return requests.delete(
             f"{server_url}{api_url}", headers=headers, params=params, verify=False

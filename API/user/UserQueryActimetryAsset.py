@@ -5,9 +5,10 @@ from werkzeug.utils import secure_filename
 from flask import request, send_file
 from flask_babel import gettext
 from flask_restx import Resource
-from FlaskModule import device_api_ns as api
-from opentera.services.ServiceAccessManager import ServiceAccessManager, current_service_client, \
-    current_login_type, current_user_client, current_device_client, current_participant_client, LoginType
+from FlaskModule import user_api_ns as api
+from opentera.services.ServiceAccessManager import (ServiceAccessManager, current_login_type, current_user_client,
+                                                    LoginType)
+from FlaskModule import flask_app
 from libactimetry.db.models.ActimetryAsset import ActimetryAsset
 import Globals as Globals
 
@@ -23,7 +24,7 @@ delete_parser.add_argument('access_token', type=str, required=True, help='Access
                                                                          'asset can be deleted.')
 
 
-class QueryActimetryAsset(Resource):
+class UserQueryActimetryAsset(Resource):
 
     def __init__(self, _api, *args, **kwargs):
         Resource.__init__(self, _api, *args, **kwargs)
@@ -31,13 +32,13 @@ class QueryActimetryAsset(Resource):
         self.test = kwargs.get('test', False)
 
     @api.expect(get_parser, validate=True)
-    @api.doc(description='Download actimetry asset',
+    @api.doc(description='Download asset',
              responses={200: 'Success - start download!',
                         400: 'Bad request',
                         403: 'Access denied to the requested asset'})
-    @ServiceAccessManager.token_required(allow_dynamic_tokens=False, allow_static_tokens=True)
+    @ServiceAccessManager.service_or_others_token_required(allow_dynamic_tokens=True, allow_static_tokens=False)
     def get(self):
-        if current_login_type != LoginType.DEVICE_LOGIN:
+        if current_login_type != LoginType.USER_LOGIN:
             return gettext('Invalid login type'), 403
 
         args = get_parser.parse_args()
@@ -62,9 +63,9 @@ class QueryActimetryAsset(Resource):
              responses={200: 'Success - Return informations about file assets',
                         400: 'Required parameter is missing',
                         403: 'Access denied to the requested asset'})
-    @ServiceAccessManager.token_required(allow_dynamic_tokens=False, allow_static_tokens=True)
+    @ServiceAccessManager.service_or_others_token_required(allow_dynamic_tokens=True, allow_static_tokens=True)
     def post(self):
-        if current_login_type != LoginType.DEVICE_LOGIN:
+        if current_login_type != LoginType.USER_LOGIN:
             return gettext('Invalid login type'), 403
 
         if not request.content_type.__contains__('multipart/form-data'):
@@ -98,18 +99,29 @@ class QueryActimetryAsset(Resource):
             return gettext('Session access is forbidden'), 403
 
         session_json = response.json()[0]
+        if not current_user_client.user_superadmin:
+            access_allowed = False
+            # Project admins are always allowed to add files to any session
+            if 'session_participants' in session_json:
+                if len(session_json['session_participants']) > 0:
+                    id_project = session_json['session_participants'][0]['id_project']
+                    if current_user_client.get_role_for_project(id_project=id_project) == 'admin':
+                        access_allowed = True
 
-        if 'session_devices' not in session_json or (
-                current_device_client.device_uuid not in
-                [device['device_uuid'] for device in session_json['session_devices']]
-                and current_device_client.id_device != session_json['id_creator_device']):
-            return gettext('Session access is forbidden'), 403
+            if not access_allowed:
+                if not 'session_users' not in session_json or (
+                        current_user_client.user_uuid not in
+                        [user['user_uuid'] for user in session_json['session_users']]
+                        and current_user_client.id_user != session_json['id_creator_user']):
+                    access_allowed = True
+            if not access_allowed:
+                return gettext('Session access is forbidden'), 403
 
         # Manage id creator.
-        asset_json['id_device'] = current_device_client.id_device
+        asset_json['id_user'] = current_user_client.id_user
 
         # Set asset managed to this service
-        asset_json['asset_service_uuid'] = Globals.config_man.service_config["ServiceUUID"]
+        asset_json['asset_service_uuid'] = Globals.service.service_info['service_uuid']
 
         # Set asset type if missing
         original_filename = secure_filename(file.filename)
@@ -135,6 +147,8 @@ class QueryActimetryAsset(Resource):
         # Create the asset in the local database
         new_asset_json = response.json()[0]
         asset_uuid = new_asset_json['asset_uuid']
+
+        #filename = os.path.join(flask_app.config['UPLOAD_FOLDER'], asset_uuid)
         if not self.test:
             filename = os.path.join(Globals.config_man.actimetry_service_config['files_directory'], asset_uuid)
         else:
@@ -183,9 +197,10 @@ class QueryActimetryAsset(Resource):
                                                   requester_uuid=Globals.service.get_current_requester_uuid(),
                                                   expiration=1800)
 
-        full_json['asset_infos_url'] = ''  # No assets infos URL for devices
+        full_json['asset_infos_url'] = 'https://' + servername + ':' + str(port) + endpoint\
+                                       + '/api/user/assets/infos'
         full_json['asset_url'] = 'https://' + servername + ':' + str(port) + endpoint\
-                                 + '/api/device/assets'  # ?asset_uuid=' + asset_uuid
+                                 + '/api/user/assets'
         full_json['access_token'] = access_token
         return full_json
 
@@ -196,21 +211,20 @@ class QueryActimetryAsset(Resource):
                         403: 'Access denied to the requested asset'})
     @ServiceAccessManager.service_or_others_token_required(allow_dynamic_tokens=True, allow_static_tokens=False)
     def delete(self):
-        return gettext('Forbidden for security reasons'), 403
+        if current_login_type != LoginType.USER_LOGIN:
+            return gettext('Invalid login type'), 403
 
-        # if current_login_type != LoginType.DEVICE_LOGIN:
-        #     return gettext('Invalid token type'), 403
-        # parser = delete_parser
-        #
-        # args = parser.parse_args()
-        # uuid_todel = args['uuid']
-        #
-        # if not Globals.service.has_access_to_asset(args['access_token'], uuid_todel):
-        #     return gettext('Access denied to asset'), 403
-        #
-        # # Delete from OpenTera Server
-        # response = Globals.service.delete_from_opentera('/api/service/assets', {'uuid': uuid_todel})
-        # if response.status_code != 200:
-        #     return gettext('Unable to delete asset') + ': ' + response.text, response.status_code
-        #
-        # return '', 200
+        parser = delete_parser
+
+        args = parser.parse_args()
+        uuid_todel = args['uuid']
+
+        if not Globals.service.has_access_to_asset(args['access_token'], uuid_todel):
+            return gettext('Access denied to asset'), 403
+
+        # Delete from OpenTera Server
+        response = Globals.service.delete_from_opentera('/api/service/assets', {'uuid': uuid_todel})
+        if response.status_code != 200:
+            return gettext('Unable to delete asset') + ': ' + response.text, response.status_code
+
+        return '', 200

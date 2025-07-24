@@ -296,6 +296,13 @@ class FlaskModule(BaseModule):
 
         api_ns.add_resource(Version, "/version", resource_class_kwargs=kwargs)
 
+        # Add those to implement base (generic) endpoints
+        from API.user.UserQueryActimetryAsset import UserQueryActimetryAsset
+        from API.user.UserQueryActimetryAssetInfos import UserQueryActimetryAssetInfos
+
+        api_ns.add_resource(UserQueryActimetryAsset, '/assets', resource_class_kwargs=kwargs)
+        api_ns.add_resource(UserQueryActimetryAssetInfos, '/assets/infos', resource_class_kwargs=kwargs)
+
         FlaskModule.init_user_api(module, user_api_ns)
         FlaskModule.init_device_api(module, device_api_ns)
         FlaskModule.init_participant_api(module, participant_api_ns)
@@ -305,6 +312,13 @@ class FlaskModule(BaseModule):
         # Default arguments
         kwargs = {'flaskModule': module}
         kwargs |= additional_args
+
+        from API.user.UserQueryActimetryAsset import UserQueryActimetryAsset
+        from API.user.UserQueryActimetryAssetInfos import UserQueryActimetryAssetInfos
+
+        namespace.add_resource(UserQueryActimetryAsset, '/assets', resource_class_kwargs=kwargs)
+        namespace.add_resource(UserQueryActimetryAssetInfos, '/assets/infos', resource_class_kwargs=kwargs)
+
 
     @staticmethod
     def init_participant_api(module: object, namespace: Namespace, additional_args: dict = dict()):
