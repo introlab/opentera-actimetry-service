@@ -315,9 +315,11 @@ class FlaskModule(BaseModule):
 
         from API.user.UserQueryActimetryAsset import UserQueryActimetryAsset
         from API.user.UserQueryActimetryAssetInfos import UserQueryActimetryAssetInfos
+        from API.user.UserQueryActimetryAlgorithm import UserQueryActimetryAlgorithm
 
         namespace.add_resource(UserQueryActimetryAsset, '/assets', resource_class_kwargs=kwargs)
         namespace.add_resource(UserQueryActimetryAssetInfos, '/assets/infos', resource_class_kwargs=kwargs)
+        namespace.add_resource(UserQueryActimetryAlgorithm, '/algorithms', resource_class_kwargs=kwargs)
 
 
     @staticmethod
