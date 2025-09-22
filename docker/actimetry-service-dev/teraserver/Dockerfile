@@ -5,7 +5,7 @@ SHELL ["/bin/bash", "-c"]
 
 # Install build dependencies
 RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
-	build-essential cmake git sudo vim libprotobuf-dev protobuf-compiler locales wget curl
+    build-essential cmake git sudo vim libprotobuf-dev protobuf-compiler locales wget curl
 # Set system locale
 RUN sed -i -e 's/# en_US.UTF-8 UTF-8/en_US.UTF-8 UTF-8/' /etc/locale.gen && \
     locale-gen
@@ -17,6 +17,12 @@ ENV LC_ALL=en_US.UTF-8
 WORKDIR /root
 RUN wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
 RUN bash ~/Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3
+
+
+# Accept Conda Terms of Service for required channels
+RUN $HOME/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+RUN $HOME/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
 
 # Install latest npm / nodejs
 RUN curl -sL https://deb.nodesource.com/setup_18.x -o nodesource_setup.sh

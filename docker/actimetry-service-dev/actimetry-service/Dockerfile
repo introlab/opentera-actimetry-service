@@ -22,6 +22,12 @@ RUN bash ./Miniconda3-latest-Linux-x86_64.sh -b -p $HOME/miniconda3
 # Copy requirements file (does not change often)
 ADD ./requirements.txt requirements.txt
 
+
+
+# Accept Conda Terms of Service for required channels
+RUN $HOME/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+RUN $HOME/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+
 # Create conda venv in local directory outside of sources
 RUN $HOME/miniconda3/bin/conda create -c conda-forge -y --copy -n actimetry-env python=3.11
 RUN $HOME/miniconda3/bin/conda init bash
