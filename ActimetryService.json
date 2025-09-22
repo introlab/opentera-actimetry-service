@@ -1,7 +1,7 @@
 {
     "Service": {
         "name": "ActimetryService",
-        "hostname": "actimetry-service",
+        "hostname": "127.0.0.1",
         "port": 4088,
         "debug_mode": true
     },
@@ -18,7 +18,7 @@
     },
     "Database": {
         "db_type": "QPSQL",
-        "name": "actimetry",
+        "name": "opentera_actimetry",
         "url": "127.0.0.1",
         "port": 5432,
         "username": "teraagent",
@@ -26,6 +26,7 @@
     },
     "ActimetryService": {
         "temp_directory": "files/tmp",
-        "files_directory": "files"
+        "files_directory": "files",
+        "database_directory": "files/databases"
     }
 }

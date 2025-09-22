@@ -1,10 +1,7 @@
-from flask import request
 from flask_babel import gettext
 from flask_restx import Resource, inputs
 from FlaskModule import user_api_ns as api
-from opentera.services.ServiceAccessManager import (ServiceAccessManager, current_login_type, current_user_client,
-                                                    LoginType)
-import Globals as Globals
+from opentera.services.ServiceAccessManager import (ServiceAccessManager, current_login_type, LoginType)
 
 # Parser definition(s)
 get_parser = api.parser()

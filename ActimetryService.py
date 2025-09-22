@@ -1,6 +1,5 @@
 import argparse
 import sys
-import json
 import os
 
 # SQLAlchemy
@@ -9,8 +8,6 @@ from sqlalchemy.exc import OperationalError
 # Twisted
 from twisted.internet import reactor, defer
 from twisted.python import log
-
-from requests import get, post, delete, Response
 
 # OpenTera
 from opentera.redis.RedisClient import RedisClient
@@ -24,6 +21,7 @@ from FlaskModule import FlaskModule, flask_app
 import Globals
 from ConfigManager import ConfigManager
 from libactimetry.db.DBManager import DBManager
+from libactimetry.workers.WorkerManager import WorkerManager
 
 
 class ActimetryService(ServiceOpenTeraWithAssets):
@@ -101,7 +99,7 @@ if __name__ == "__main__":
     log.startLogging(sys.stdout)
 
     parser = argparse.ArgumentParser(description="Actimetry Service")
-    parser.add_argument("--enable_tests", help="Test mode for service.", default=True)
+    parser.add_argument("--enable_tests", help="Test mode for service.", default=False)
     parser.add_argument(
         "--conf", help="Configuration file", default="ActimetryService.json"
     )
@@ -184,6 +182,9 @@ if __name__ == "__main__":
             "Unable to connect to database - please check settings in config file!", e
         )
         quit()
+
+    # WORKER MANAGER
+    Globals.worker_man = WorkerManager()
 
     with flask_app.app_context():
         # Create the Service
