@@ -73,8 +73,8 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         self.assertIsNotNone(self.test_client)
 
         # Get tokens for tests
-        admin_user = self._login_user('admin', 'admin')
-        self.admin_user_token = admin_user['user_token']
+        self._admin_user = self._login_user('admin', 'admin')
+        self.admin_user_token = self._admin_user['user_token']
         devices = self._service.get_from_opentera_with_token(token=self.admin_user_token,
                                                              api_url='/api/user/devices')
         self.device_token = devices.json()[0]['device_token']
