@@ -1,5 +1,5 @@
 from libactimetry.db.models.BaseModel import BaseModel
-from sqlalchemy import Column, Integer, String, Sequence, SmallInteger, UUID, TIMESTAMP, func, ForeignKey
+from sqlalchemy import Column, Integer, String, Sequence, SmallInteger, TIMESTAMP, func, ForeignKey
 from sqlalchemy.orm import relationship
 from enum import Enum
 
@@ -30,14 +30,14 @@ class ActimetryWorkerLog(BaseModel):
     """
     __tablename__ = "t_actimetry_workers_logs"
     id_worker_log = Column(Integer, Sequence('id_actimetry_worker_log'), primary_key=True, autoincrement=True)
-    worker_uuid = Column(UUID, nullable=False, unique=True)
-    worker_owner_uuid = Column(UUID, nullable=False)
+    worker_uuid = Column(String(36), nullable=False, unique=True)
+    worker_owner_uuid = Column(String(36), nullable=False)
     worker_owner_type = Column(SmallInteger, nullable=False)
     id_database = Column(Integer, ForeignKey('t_actimetry_databases'), nullable=True)
     worker_type = Column(SmallInteger, nullable=False)
     worker_start_time = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
     worker_end_time = Column(TIMESTAMP(timezone=True), nullable=True)
-    worker_update_time = Column(TIMESTAMP(timezone=True), nullable=False, onupdate=lambda:func.now())
+    worker_update_time = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now(), onupdate=lambda:func.now())
     worker_status = Column(SmallInteger, nullable=False, default=WorkerStatus.STATUS_READY.value)
     worker_parameters = Column(String, nullable=True)
     worker_results = Column(String, nullable=True)
