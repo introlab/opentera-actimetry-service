@@ -1,8 +1,19 @@
 from libactimetry.db.models.BaseModel import BaseModel
-from sqlalchemy import Column, Integer, String, ForeignKey, Sequence, TIMESTAMP, func, exc, JSON
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    ForeignKey,
+    Sequence,
+    TIMESTAMP,
+    func,
+    exc,
+    JSON,
+)
 from sqlalchemy.orm import relationship
 
 from enum import Enum
+
 
 # TODO: Enumerate types depending on what we support
 class ActimetryDatabaseType(Enum):
@@ -21,15 +32,16 @@ class ActimetryDatabase(BaseModel):
     """
 
     __tablename__ = "t_actimetry_databases"
-    id_database = Column(Integer, Sequence('id_database_sequence'), primary_key=True, autoincrement=True)
-    id_collection = Column(Integer, ForeignKey('t_actimetry_assets.id_collection', ondelete='cascade'),
-                           nullable=False)
+    id_database = Column(Integer, Sequence("id_database_sequence"), primary_key=True, autoincrement=True)
+    id_session = Column(Integer, nullable=False)
     database_uuid = Column(String(36), nullable=False, unique=True)
     database_participant_uuid = Column(String(36), nullable=False)  # Participant to which the database is linked
     database_name = Column(String, nullable=False)
     database_type = Column(Integer, nullable=False, default=ActimetryDatabaseType.DATABASETYPE_OPENIMU)
-    database_parameters = Column(JSON, nullable=True)  # Specific database parameter, such as connection settings, if needed
-    database_datetime = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
+    database_parameters = Column(
+        JSON, nullable=True
+    )  # Specific database parameter, such as connection settings, if needed
+    database_creation_datetime = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
     database_expiration_datetime = Column(TIMESTAMP(timezone=True), nullable=True)
 
     @staticmethod

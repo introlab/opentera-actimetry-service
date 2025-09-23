@@ -1,0 +1,5 @@
+[tool.flake8]
+max-line-length = 120  # Remplacez 120 par la longueur souhaitée
+
+[tool.black]
+line-length = 120  # Remplacez 120 par la longueur souhaitée
