@@ -370,6 +370,14 @@ class TimescaleDBDataClient:
                 con.execute(text(alter_stmt))
                 print(f"Compression settings applied to hypertable '{table_name}'.")
                 con.commit()
+
+                # Add compression policy
+                compress_policy_stmt = f"""
+                SELECT add_compression_policy('"{table_name}"', INTERVAL '2 minutes');
+                """
+                con.execute(text(compress_policy_stmt))
+                print(f"Compression policy added to hypertable '{table_name}'.")
+                con.commit()
             except Exception as e:
                 print(
                     f"Error applying compression settings to hypertable '{table_name}': {e}"
