@@ -4,14 +4,21 @@ from sqlalchemy import event
 from sqlalchemy.engine import Engine
 from sqlalchemy.engine.reflection import Inspector
 from sqlite3 import Connection as SQLite3Connection
+
 # Alembic
 from alembic.config import Config
 from alembic import command
 
 # All models need to be imported here
 from libactimetry.db.models.BaseModel import BaseModel
+import libactimetry.db.models.ActimetryAlgorithm
+import libactimetry.db.models.ActimetryAsset
+import libactimetry.db.models.ActimetryDatabase
+import libactimetry.db.models.ActimetryResults
+import libactimetry.db.models.ActimetryWorkerLog
 
 from ConfigManager import ConfigManager
+
 
 class DBManager:
     """db_infos = {
@@ -30,19 +37,17 @@ class DBManager:
         self.test = test
 
     #
-    def create_defaults(self, config: ConfigManager, test: bool=False):
+    def create_defaults(self, config: ConfigManager, test: bool = False):
         with self.app.app_context():
             # TODO call create defaults on all models
             pass
 
     def open(self, db_infos, echo=False):
-        self.db_uri = 'postgresql://%(user)s:%(pw)s@%(host)s:%(port)s/%(db)s' % db_infos
+        self.db_uri = "postgresql://%(user)s:%(pw)s@%(host)s:%(port)s/%(db)s" % db_infos
 
-        self.app.config.update({
-            'SQLALCHEMY_DATABASE_URI': self.db_uri,
-            'SQLALCHEMY_TRACK_MODIFICATIONS': False,
-            'SQLALCHEMY_ECHO': echo
-        })
+        self.app.config.update(
+            {"SQLALCHEMY_DATABASE_URI": self.db_uri, "SQLALCHEMY_TRACK_MODIFICATIONS": False, "SQLALCHEMY_ECHO": echo}
+        )
 
         # Create db engine
         self.db.init_app(self.app)
@@ -66,15 +71,13 @@ class DBManager:
     def open_local(self, db_infos, echo=False, ram=True):
         # IN RAM
         if ram:
-            self.db_uri = 'sqlite://'
+            self.db_uri = "sqlite://"
         else:
-            self.db_uri = 'sqlite:///%(filename)s' % db_infos
+            self.db_uri = "sqlite:///%(filename)s" % db_infos
 
-        self.app.config.update({
-            'SQLALCHEMY_DATABASE_URI': self.db_uri,
-            'SQLALCHEMY_TRACK_MODIFICATIONS': False,
-            'SQLALCHEMY_ECHO': echo
-        })
+        self.app.config.update(
+            {"SQLALCHEMY_DATABASE_URI": self.db_uri, "SQLALCHEMY_TRACK_MODIFICATIONS": False, "SQLALCHEMY_ECHO": echo}
+        )
 
         # Create db engine
         self.db.init_app(self.app)
@@ -97,8 +100,9 @@ class DBManager:
     def init_alembic(self):
         import sys
         import os
+
         # determine if application is a script file or frozen exe
-        if getattr(sys, 'frozen', False):
+        if getattr(sys, "frozen", False):
             # If the application is run as a bundle, the pyInstaller bootloader
             # extends the sys module by a flag frozen=True and sets the app
             # path into variable _MEIPASS'.
@@ -107,17 +111,17 @@ class DBManager:
             root_directory = this_file_directory
         else:
             this_file_directory = os.path.dirname(os.path.abspath(__file__))
-            root_directory = os.path.join(this_file_directory, '..' + os.sep + '..')
+            root_directory = os.path.join(this_file_directory, ".." + os.sep + "..")
 
         # this_file_directory = os.path.dirname(os.path.abspath(inspect.stack()[0][1]))
 
-        alembic_directory = os.path.join(root_directory, 'alembic')
-        ini_path = os.path.join(root_directory, 'alembic.ini')
+        alembic_directory = os.path.join(root_directory, "alembic")
+        ini_path = os.path.join(root_directory, "alembic.ini")
 
         # create Alembic config and feed it with paths
         alembic_config = Config(ini_path)
-        alembic_config.set_main_option('script_location', alembic_directory)
-        alembic_config.set_main_option('sqlalchemy.url', self.db_uri)
+        alembic_config.set_main_option("script_location", alembic_directory)
+        alembic_config.set_main_option("sqlalchemy.url", self.db_uri)
 
         return alembic_config
 
@@ -125,7 +129,7 @@ class DBManager:
         alembic_config = self.init_alembic()
 
         # prepare and run the command
-        revision = 'head'
+        revision = "head"
         sql = False
         tag = None
 
@@ -136,14 +140,15 @@ class DBManager:
         alembic_config = self.init_alembic()
 
         # prepare and run the command
-        revision = 'head'
+        revision = "head"
         sql = False
         tag = None
 
         # Stamp database
         command.stamp(alembic_config, revision, sql, tag)
 
- # Fix foreign_keys on sqlite
+
+# Fix foreign_keys on sqlite
 @event.listens_for(Engine, "connect")
 def _set_sqlite_pragma(dbapi_connection, connection_record):
     if isinstance(dbapi_connection, SQLite3Connection):

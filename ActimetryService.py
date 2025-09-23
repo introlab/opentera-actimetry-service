@@ -37,19 +37,16 @@ class ActimetryService(ServiceOpenTeraWithAssets):
         # Get upload and temp directories (will create them if they do not exist)
         self.upload_directory = self.verify_file_upload_directory(config_man)
         self.temp_directory = self.verify_temp_directory(config_man)
+        self.databases_directory = self.verify_databases_directory(config_man)
 
         self.init_service()
 
-    def verify_file_upload_directory(
-        self, config_man: ConfigManager, create: bool = True
-    ) -> str:
+    def verify_file_upload_directory(self, config_man: ConfigManager, create: bool = True) -> str:
         """
         Verify that the file upload directory exists and is writable.
         If not, create it.
         """
-        file_upload_directory = config_man.actimetry_service_config.get(
-            "files_directory", None
-        )
+        file_upload_directory = config_man.actimetry_service_config.get("files_directory", None)
         if not file_upload_directory:
             raise ValueError("File upload directory is not set in configuration.")
 
@@ -62,9 +59,7 @@ class ActimetryService(ServiceOpenTeraWithAssets):
             raise ValueError("File upload directory is not writable.")
         return file_upload_directory
 
-    def verify_temp_directory(
-        self, config_man: ConfigManager, create: bool = True
-    ) -> str:
+    def verify_temp_directory(self, config_man: ConfigManager, create: bool = True) -> str:
         """
         Verify that the temp directory exists and is writable.
         If not, create it.
@@ -80,6 +75,23 @@ class ActimetryService(ServiceOpenTeraWithAssets):
         if not os.access(temp_directory, os.W_OK):
             raise ValueError("Temp directory is not writable.")
         return temp_directory
+
+    def verify_databases_directory(self, config_man: ConfigManager, create: bool = True) -> str:
+        """
+        Verify that the databases directory exists and is writable.
+        If not, create it.
+        """
+        databases_directory = config_man.actimetry_service_config.get("databases_directory", None)
+        if not databases_directory:
+            raise ValueError("Databases directory is not set in configuration.")
+        if not os.path.exists(databases_directory):
+            if create:
+                os.makedirs(databases_directory)
+            else:
+                raise ValueError("Databases directory does not exist.")
+        if not os.access(databases_directory, os.W_OK):
+            raise ValueError("Databases directory is not writable.")
+        return databases_directory
 
     def init_service(self):
         pass
@@ -99,10 +111,8 @@ if __name__ == "__main__":
     log.startLogging(sys.stdout)
 
     parser = argparse.ArgumentParser(description="Actimetry Service")
-    parser.add_argument("--enable_tests", help="Test mode for service.", default=False)
-    parser.add_argument(
-        "--conf", help="Configuration file", default="ActimetryService.json"
-    )
+    parser.add_argument("--enable_tests", help="Test mode for service.", default=True)
+    parser.add_argument("--conf", help="Configuration file", default="ActimetryService.json")
     args = parser.parse_args()
 
     # Load configuration
@@ -146,9 +156,7 @@ if __name__ == "__main__":
 
     service_info = json.loads(service_info)
     if "service_uuid" not in service_info:
-        sys.stderr.write(
-            "OpenTera Server didn't return a valid service UUID - aborting."
-        )
+        sys.stderr.write("OpenTera Server didn't return a valid service UUID - aborting.")
         sys.exit(1)
 
     # Update service uuid
@@ -173,14 +181,10 @@ if __name__ == "__main__":
                 "host": Globals.config_man.db_config["url"],
                 "port": Globals.config_man.db_config["port"],
             }
-            Globals.db_man.open(
-                POSTGRES, Globals.config_man.service_config["debug_mode"]
-            )
+            Globals.db_man.open(POSTGRES, Globals.config_man.service_config["debug_mode"])
 
     except OperationalError as e:
-        print(
-            "Unable to connect to database - please check settings in config file!", e
-        )
+        print("Unable to connect to database - please check settings in config file!", e)
         quit()
 
     # WORKER MANAGER
