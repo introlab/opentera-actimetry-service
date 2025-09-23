@@ -93,6 +93,7 @@ class MySite(Site):
     def __init__(self, resource, requestFactory=None, *args, **kwargs):
         Site.__init__(self, resource, requestFactory, *args, **kwargs)
 
+
 class MyRequest(Request):
     def requestReceived(self, command, path, version):
         # print('Request received', command, path, version)
@@ -126,9 +127,7 @@ class CustomAPI(Api):
         """
 
         if "X-Script-Name" in request.headers:
-            return request.headers["X-Script-Name"] + url_for(
-                self.endpoint("specs"), _external=False
-            )
+            return request.headers["X-Script-Name"] + url_for(self.endpoint("specs"), _external=False)
         else:
             return url_for(self.endpoint("specs"), _external=False)
 
@@ -140,9 +139,7 @@ class CustomAPI(Api):
         :rtype: str
         """
         if "X-Script-Name" in request.headers:
-            return request.headers["X-Script-Name"] + url_for(
-                self.endpoint("root"), _external=True
-            )
+            return request.headers["X-Script-Name"] + url_for(self.endpoint("root"), _external=True)
         else:
             return url_for(self.endpoint("root"), _external=True)
 
@@ -154,9 +151,7 @@ class CustomAPI(Api):
         :rtype: str
         """
         if "X-Script-Name" in request.headers:
-            return request.headers["X-Script-Name"] + url_for(
-                self.endpoint("root"), _external=False
-            )
+            return request.headers["X-Script-Name"] + url_for(self.endpoint("root"), _external=False)
         else:
             return url_for(self.endpoint("root"), _external=False)
 
@@ -195,16 +190,13 @@ class FlaskModule(BaseModule):
     def __init__(self, config: ConfigManager, service: ServiceOpenTeraWithTests):
 
         # Warning, the name must be unique!
-        BaseModule.__init__(
-            self, config.service_config["name"] + ".FlaskModule", config
-        )
+        BaseModule.__init__(self, config.service_config["name"] + ".FlaskModule", config)
 
         flask_app.debug = config.service_config["debug_mode"]
         flask_app.config.update({"SESSION_TYPE": "redis"})
 
         redis_url = redis.from_url(
-            "redis://%(username)s:%(password)s@%(hostname)s:%(port)s/%(db)s"
-            % self.config.redis_config
+            "redis://%(username)s:%(password)s@%(hostname)s:%(port)s/%(db)s" % self.config.redis_config
         )
 
         flask_app.config.update({"SESSION_REDIS": redis_url})
@@ -214,7 +206,7 @@ class FlaskModule(BaseModule):
         flask_app.config.update({"BABEL_DEFAULT_LOCALE": "fr"})
         flask_app.config.update({"SESSION_COOKIE_SECURE": True})
 
-        flask_app.config.update({'UPLOAD_FOLDER': config.actimetry_service_config['files_directory']})
+        flask_app.config.update({"UPLOAD_FOLDER": config.actimetry_service_config["files_directory"]})
         self.service = service
 
         # Init API
@@ -259,9 +251,7 @@ class FlaskModule(BaseModule):
             )
             return False
         else:
-            print(
-                "Certs are fine", connection, x509.get_subject(), errnum, errdepth, ok
-            )
+            print("Certs are fine", connection, x509.get_subject(), errnum, errdepth, ok)
         return True
 
     def setup_module_pubsub(self):
@@ -281,9 +271,7 @@ class FlaskModule(BaseModule):
         pass
 
     @staticmethod
-    def init_api(
-        service: object, module: object, api_ns=service_api_ns, additional_args=dict()
-    ):
+    def init_api(service: object, module: object, api_ns=service_api_ns, additional_args=dict()):
         """
         Initialize the API for the Flask module.
         """
@@ -299,9 +287,15 @@ class FlaskModule(BaseModule):
         # Add those to implement base (generic) endpoints
         from API.user.UserQueryActimetryAsset import UserQueryActimetryAsset
         from API.user.UserQueryActimetryAssetInfos import UserQueryActimetryAssetInfos
+        from API.user.UserQueryActimetryAlgorithm import UserQueryActimetryAlgorithm
+        from API.user.UserQueryActimetryProcessing import UserQueryActimetryProcessing
+        from API.user.UserQueryActimetryDatabase import UserQueryActimetryDatabase
 
-        api_ns.add_resource(UserQueryActimetryAsset, '/assets', resource_class_kwargs=kwargs)
-        api_ns.add_resource(UserQueryActimetryAssetInfos, '/assets/infos', resource_class_kwargs=kwargs)
+        api_ns.add_resource(UserQueryActimetryAsset, "/assets", resource_class_kwargs=kwargs)
+        api_ns.add_resource(UserQueryActimetryAssetInfos, "/assets/infos", resource_class_kwargs=kwargs)
+        api_ns.add_resource(UserQueryActimetryAlgorithm, "/algorithms", resource_class_kwargs=kwargs)
+        api_ns.add_resource(UserQueryActimetryProcessing, "/processing", resource_class_kwargs=kwargs)
+        api_ns.add_resource(UserQueryActimetryDatabase, "/databases", resource_class_kwargs=kwargs)
 
         FlaskModule.init_user_api(module, user_api_ns)
         FlaskModule.init_device_api(module, device_api_ns)
@@ -310,7 +304,7 @@ class FlaskModule(BaseModule):
     @staticmethod
     def init_user_api(module: object, namespace: Namespace, additional_args: dict = dict()):
         # Default arguments
-        kwargs = {'flaskModule': module}
+        kwargs = {"flaskModule": module}
         kwargs |= additional_args
 
         from API.user.UserQueryActimetryAsset import UserQueryActimetryAsset
@@ -318,27 +312,26 @@ class FlaskModule(BaseModule):
         from API.user.UserQueryActimetryAlgorithm import UserQueryActimetryAlgorithm
         from API.user.UserQueryActimetryProcessing import UserQueryActimetryProcessing
 
-        namespace.add_resource(UserQueryActimetryAsset, '/assets', resource_class_kwargs=kwargs)
-        namespace.add_resource(UserQueryActimetryAssetInfos, '/assets/infos', resource_class_kwargs=kwargs)
-        namespace.add_resource(UserQueryActimetryAlgorithm, '/algorithms', resource_class_kwargs=kwargs)
-        namespace.add_resource(UserQueryActimetryProcessing, '/processing', resource_class_kwargs=kwargs)
-
+        namespace.add_resource(UserQueryActimetryAsset, "/assets", resource_class_kwargs=kwargs)
+        namespace.add_resource(UserQueryActimetryAssetInfos, "/assets/infos", resource_class_kwargs=kwargs)
+        namespace.add_resource(UserQueryActimetryAlgorithm, "/algorithms", resource_class_kwargs=kwargs)
+        namespace.add_resource(UserQueryActimetryProcessing, "/processing", resource_class_kwargs=kwargs)
 
     @staticmethod
     def init_participant_api(module: object, namespace: Namespace, additional_args: dict = dict()):
         # Default arguments
-        kwargs = {'flaskModule': module}
+        kwargs = {"flaskModule": module}
         kwargs |= additional_args
 
     @staticmethod
     def init_device_api(module: object, namespace: Namespace, additional_args: dict = dict()):
         # Default arguments
-        kwargs = {'flaskModule': module}
+        kwargs = {"flaskModule": module}
         kwargs |= additional_args
 
         from API.device.QueryActimetryAsset import QueryActimetryAsset
 
-        namespace.add_resource(QueryActimetryAsset, '/assets', resource_class_kwargs=kwargs)
+        namespace.add_resource(QueryActimetryAsset, "/assets", resource_class_kwargs=kwargs)
 
     def init_views(self):
         # Default arguments

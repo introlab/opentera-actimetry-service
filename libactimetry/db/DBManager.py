@@ -97,6 +97,17 @@ class DBManager:
                 # Apply any database upgrade, if needed
                 self.upgrade_db()
 
+    def close(self):
+
+        if self.db and self.app:
+            with self.app.app_context():
+                self.db.session.remove()
+                self.db.get_engine().dispose()
+                self.db = None
+        self.db_uri = None
+        self.app = None
+        self.test = False
+
     def init_alembic(self):
         import sys
         import os
