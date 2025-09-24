@@ -75,6 +75,9 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         # Get tokens for tests
         self._admin_user = self._login_user('admin', 'admin')
         self.admin_user_token = self._admin_user['user_token']
+
+        self.site_admin_token = self._login_user('siteadmin', 'siteadmin')['user_token']
+
         devices = self._service.get_from_opentera_with_token(token=self.admin_user_token,
                                                              api_url='/api/user/devices')
         self.device_token = devices.json()[0]['device_token']

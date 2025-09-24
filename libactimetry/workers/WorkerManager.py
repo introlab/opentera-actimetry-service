@@ -4,55 +4,61 @@ import sys
 import subprocess
 import pickle
 import datetime
+import json
 
 import Globals as Globals
 from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, WorkerType, WorkerOwnerType, WorkerStatus
 
 
 class WorkerManager:
-    def __init__(self):
+    def __init__(self, app):
         self._processes = {}
+        self.flask_app = app
 
     def worker_log_stdout(self, worker_uuid: uuid.UUID, text: str):
-        worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
-        if worker_log:
-            worker_log.worker_logs.append(text)
-            worker_log.commit()
+        with self.flask_app.app_context():
+            worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
+            if worker_log:
+                worker_log.worker_logs.append(text)
+                worker_log.commit()
 
     def worker_log_stderr(self, worker_uuid: uuid.UUID, text: str):
-        worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
-        if worker_log:
-            worker_log.worker_errors.append(text)
-            worker_log.commit()
+        with self.flask_app.app_context():
+            worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
+            if worker_log:
+                worker_log.worker_errors.append(text)
+                worker_log.commit()
 
     def worker_update_status(self, worker_uuid: uuid.UUID, status: WorkerStatus, ended: bool = False):
-        worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
-        if worker_log:
-            worker_log.worker_status = status
-            if ended:
-                worker_log.worker_end_time = datetime.datetime.now()
-            worker_log.commit()
+        with self.flask_app.app_context():
+            worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
+            if worker_log:
+                worker_log.worker_status = status.value
+                if ended:
+                    worker_log.worker_end_time = datetime.datetime.now()
+                worker_log.commit()
 
-        if ended:
-            del self._processes[worker_uuid]
+            if ended:
+                del self._processes[worker_uuid]
 
     def worker_set_results(self, worker_uuid: uuid.UUID, results: str):
-        worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
-        if worker_log:
-            worker_log.worker_results = results
-            worker_log.commit()
+        with self.flask_app.app_context():
+            worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
+            if worker_log:
+                worker_log.worker_results = results
+                worker_log.commit()
 
     def start_processing_worker(self, script: str, datapath: str, params: dict, owner_uuid: str,
                                 owner_type: WorkerOwnerType, database_id: int) -> (uuid.UUID, WorkerStatus):
         # Create a job UUID
-        job_uuid = uuid.uuid4()
+        job_uuid = str(uuid.uuid4())
 
         # Create worker log entry
         worker_log = ActimetryWorkerLog()
         worker_log.worker_uuid = job_uuid
         worker_log.worker_owner_uuid = owner_uuid
-        worker_log.worker_owner_type = owner_type
-        worker_log.worker_parameters = {'script': script, 'params': params}
+        worker_log.worker_owner_type = owner_type.value
+        worker_log.worker_parameters = json.dumps({'script': script, 'params': params})
         worker_log.worker_type = WorkerType.TYPE_ALGORITHM.value
         worker_log.worker_id_database = database_id
         ActimetryWorkerLog.insert(worker_log)

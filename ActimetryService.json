@@ -27,6 +27,6 @@
     "ActimetryService": {
         "temp_directory": "files/tmp",
         "files_directory": "files",
-        "database_directory": "files/databases"
+        "databases_directory": "files/databases"
     }
 }

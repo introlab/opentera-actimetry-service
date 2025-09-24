@@ -188,7 +188,7 @@ if __name__ == "__main__":
         quit()
 
     # WORKER MANAGER
-    Globals.worker_man = WorkerManager()
+    Globals.worker_man = WorkerManager(app=flask_app)
 
     with flask_app.app_context():
         # Create the Service

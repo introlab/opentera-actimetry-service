@@ -180,6 +180,10 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
         # Setup modules
         self.flask_module = FakeFlaskModule(self.config_man, self.flask_app, self)
 
+        # WORKER MANAGER
+        from libactimetry.workers.WorkerManager import WorkerManager
+        Globals.worker_man = WorkerManager(self.flask_module)
+
     def reset_tera_server_database_and_create_service(self):
         # Reset database
         server_url = f'https://{self.config_man.backend_config["hostname"]}:{self.config_man.backend_config["port"]}'
