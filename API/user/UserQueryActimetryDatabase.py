@@ -1,3 +1,5 @@
+import os
+import json
 from flask_babel import gettext
 from flask_restx import Resource, inputs
 from flask import request
@@ -16,8 +18,11 @@ from opentera.services.ServiceAccessManager import (
 from werkzeug.exceptions import BadRequest
 from opentera.modules.BaseModule import BaseModule
 from libopenimu.algorithms.BaseAlgorithm import BaseAlgorithmFactory
-from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
+from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase, ActimetryDatabaseType
 from API.user.UserQueryBase import UserQueryBase
+import Globals as Globals
+from libopenimu.db.DBManager import DBManager as OpenIMUDBManager
+from libopenimu.models.Participant import Participant as OpenIMUParticipant
 
 # Parser definition(s)
 get_parser = api.parser()
@@ -101,6 +106,54 @@ class UserQueryActimetryDatabase(UserQueryBase):
         try:
             # Validate JSON schema first
             post_schema.validate(request.json)
+
+            # Validate access to session first
+            database_info = request.json["database"]
+            if "id_session" not in database_info:
+                return gettext("Missing session ID"), 400
+            if not self._verify_session_access(database_info["id_session"]):
+                return gettext("Access denied to that session"), 403
+
+            # Validate access to participant
+            if "database_participant_uuid" not in database_info:
+                return gettext("Missing participant UUID"), 400
+
+            participant_info = self._get_participant_info(database_info["database_participant_uuid"])
+            if not participant_info:
+                return gettext("No access to participant"), 403
+
+            # Check if we are creating a new database or updating an existing one
+            if database_info["id_database"] == 0:
+                # Create new database
+                new_database = ActimetryDatabase()
+                new_database.id_session = database_info["id_session"]
+                new_database.database_participant_uuid = database_info["database_participant_uuid"]
+                new_database.database_name = database_info["database_name"]
+                # Force OpenIMU type for now
+                new_database.database_type = ActimetryDatabaseType.DATABASETYPE_OPENIMU.value
+                new_database.database_parameters = database_info.get("database_parameters", None)
+                ActimetryDatabase.insert(new_database)
+
+                # Create database file
+                filename = os.path.join(
+                    Globals.config_man.actimetry_service_config["databases_directory"], new_database.database_uuid
+                )
+
+                # OpenIMU database creation
+                if new_database.database_type == ActimetryDatabaseType.DATABASETYPE_OPENIMU.value:
+                    manager: OpenIMUDBManager = OpenIMUDBManager(filename, overwrite=False, echo=False, newfile=True)
+                    # Create participant
+                    participant = OpenIMUParticipant()
+                    participant.name = participant_info["participant_name"]
+                    participant.description = json.dumps(participant_info)
+                    # Commit to DB
+                    manager.session.add(participant)
+                    manager.session.commit()
+
+                else:
+                    return gettext("Unsupported database type"), 400
+
+                return new_database.to_json(), 200
 
         except KeyError as e:
             return gettext("Required parameter is missing"), 400

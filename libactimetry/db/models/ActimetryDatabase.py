@@ -1,3 +1,5 @@
+import uuid
+import os
 from libactimetry.db.models.BaseModel import BaseModel
 from sqlalchemy import (
     Column,
@@ -48,17 +50,23 @@ class ActimetryDatabase(BaseModel):
     def get_for_participant(participant_uuid: str):
         return ActimetryDatabase.query.filter_by(database_participant_uuid=participant_uuid).first()
 
-    # Delete this database. file_folder might be required to delete the file too.
-    def delete_actimetry_database(self, file_folder: str | None) -> bool:
+    @classmethod
+    def insert(cls, database: "ActimetryDatabase"):
+        # Generate UUID
+        database.database_uuid = str(uuid.uuid4())
+
+        super().insert(database)
+
+    # Delete this database. database_folder might be required to delete the file too.
+    def delete_actimetry_database(self, database_folder: str | None) -> bool:
         # Delete related file from system
-        # TODO: Handle specific database type
-        # file_name = os.path.join(file_folder, self.asset_uuid)
-        # if os.path.exists(file_name):
-        #     # print('ActimetryAsset: Deleted ' + file_name)
-        #     os.remove(file_name)
-        # else:
-        #     # print('ActimetryAsset: File not found: ' + file_name)
-        #     return False
+        file_name = os.path.join(database_folder, self.database_uuid)
+        if os.path.exists(file_name):
+            # print('ActimetryDatabase: Deleted ' + file_name)
+            os.remove(file_name)
+        else:
+            # print('ActimetryDatabase: File not found: ' + file_name)
+            return False
 
         # Delete self from database
         try:

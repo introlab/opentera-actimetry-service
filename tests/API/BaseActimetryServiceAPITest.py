@@ -47,9 +47,7 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         cls._db_man = DBManager(app=cls._service.flask_app, test=True)
         # Setup DB in RAM
         # Create file in current directory
-        cls._db_man.open_local(
-            {"filename": os.path.join(os.getcwd(), "test.db")}, echo=True, ram=True
-        )
+        cls._db_man.open_local({"filename": os.path.join(os.getcwd(), "test.db")}, echo=True, ram=True)
 
         # Creating default users / tests. Time-consuming, only once per test file.
         with cls._service.flask_app.app_context():
@@ -169,9 +167,7 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
 
         return jwt.encode(payload, token_key, algorithm="HS256")
 
-    def _login_user(
-        self, username: str, password: str, endpoint: str = "/api/user/login"
-    ) -> dict:
+    def _login_user(self, username: str, password: str, endpoint: str = "/api/user/login") -> dict:
         # 2FA is disabled for tests
         # Websocket is disabled for tests
         # Use HTTPAuth to login
@@ -206,6 +202,43 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         return response.json()
 
+    def _get_actimetry_session_type(self, user_token: str) -> dict:
+        params = {"list": True}
+        response = self._service.get_from_opentera_with_token(
+            token=user_token, api_url="/api/user/sessiontypes", params=params
+        )
+        self.assertEqual(response.status_code, 200)
+        session_types = response.json()
+        for session_type in session_types:
+            if session_type["session_type_name"] == "Actimetry":
+                return session_type
+
+        self.fail("No Actimetry session type found")
+
+    def _create_session(self, user_token: str, id_session_type: int, id_participant: int) -> dict:
+        params = {}
+
+        session_info = {
+            "session": {
+                "id_creator_participant": id_participant,
+                "id_session": 0,  # New Session
+                "id_session_type": id_session_type,
+                "session_participants_ids": [id_participant],
+                "session_comments": "string",
+                "session_duration": 0,
+                "session_name": "string",
+                "session_parameters": "string",
+                "session_start_datetime": datetime.now().isoformat(),
+                "session_status": 0,
+            }
+        }
+        response = self._service.post_to_opentera_with_token(
+            token=user_token, api_url="/api/user/sessions", params=params, json_data=session_info
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertGreater(len(response.json()), 0)
+        return response.json()[0]
+
     def _get_with_token_auth(
         self,
         client: FlaskClient,
@@ -237,16 +270,18 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         headers = {"Authorization": "OpenTera " + token}
         return client.post(endpoint, headers=headers, query_string=params, json=json)
 
-    def _post_file_with_token_auth(self, client: FlaskClient, token: str = '', files: dict = None,
-                                   params: dict = None, endpoint: str = None):
+    def _post_file_with_token_auth(
+        self, client: FlaskClient, token: str = "", files: dict = None, params: dict = None, endpoint: str = None
+    ):
         if params is None:
             params = {}
         if endpoint is None:
             endpoint = self.test_endpoint
-        headers = {'Authorization': 'OpenTera ' + token}
+        headers = {"Authorization": "OpenTera " + token}
 
-        return client.post(endpoint, headers=headers, query_string=params, data=files,
-                           content_type='multipart/form-data')
+        return client.post(
+            endpoint, headers=headers, query_string=params, data=files, content_type="multipart/form-data"
+        )
 
     def _delete_with_token_auth(
         self,

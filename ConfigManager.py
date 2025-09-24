@@ -42,11 +42,11 @@ class ConfigManager(ServiceConfigManager, ActimetryServiceConfig, DBConfig):
         self.service_config["ServiceUUID"] = "00000000-0000-0000-0000-000000000002"
 
         # Default backend configuration
-        self.backend_config["hostname"] = "127.0.0.1"
+        self.backend_config["hostname"] = "proxy"
         self.backend_config["port"] = 40075
 
         # Default redis configuration
-        self.redis_config["hostname"] = "127.0.0.1"
+        self.redis_config["hostname"] = "cache"
         self.redis_config["port"] = 6379
         self.redis_config["username"] = ""
         self.redis_config["password"] = ""
@@ -61,6 +61,6 @@ class ConfigManager(ServiceConfigManager, ActimetryServiceConfig, DBConfig):
         self.db_config["db_type"] = "sqlite"
 
         # Default actimetry service configuration
-        self.actimetry_service_config["temp_directory"] = "/tmp/actimetry"
-        self.actimetry_service_config["files_directory"] = "files"
-        self.actimetry_service_config["databases_directory"] = "files/databases"
+        self.actimetry_service_config["temp_directory"] = "files/tmp"
+        self.actimetry_service_config["files_directory"] = "files/tmp"
+        self.actimetry_service_config["databases_directory"] = "files/tmp"
