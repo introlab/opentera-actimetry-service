@@ -9,7 +9,7 @@ class ActimetryServiceConfig:
 
     def validate_actimetry_service_config(self, config: dict):
         if "ActimetryService" in config:
-            required_fields = ["temp_directory", "files_directory"]
+            required_fields = ["temp_directory", "files_directory", "databases_directory"]
             for field in required_fields:
                 if field not in config["ActimetryService"]:
                     print("ERROR: ActimetryService Config - missing field :" + field)
@@ -61,5 +61,6 @@ class ConfigManager(ServiceConfigManager, ActimetryServiceConfig, DBConfig):
         self.db_config["db_type"] = "sqlite"
 
         # Default actimetry service configuration
-        self.actimetry_service_config["temp_directory"] = "/tmp/actimetry"
-        self.actimetry_service_config["files_directory"] = "."
+        self.actimetry_service_config["temp_directory"] = "files/tmp"
+        self.actimetry_service_config["files_directory"] = "files/tmp"
+        self.actimetry_service_config["databases_directory"] = "files/tmp"
