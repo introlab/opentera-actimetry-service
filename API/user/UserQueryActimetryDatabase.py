@@ -17,6 +17,7 @@ from werkzeug.exceptions import BadRequest
 from opentera.modules.BaseModule import BaseModule
 from libopenimu.algorithms.BaseAlgorithm import BaseAlgorithmFactory
 from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
+from API.user.UserQueryBase import UserQueryBase
 
 # Parser definition(s)
 get_parser = api.parser()
@@ -33,14 +34,12 @@ delete_paraser = api.parser()
 delete_paraser.add_argument("id_database", type=int, help="database id", required=True)
 
 
-class UserQueryActimetryDatabase(Resource):
+class UserQueryActimetryDatabase(UserQueryBase):
     """
     Query actimetry databases"""
 
     def __init__(self, _api, *args, **kwargs):
-        Resource.__init__(self, _api, *args, **kwargs)
-        self.module: BaseModule = kwargs.get("flaskModule", None)
-        self.test: bool = kwargs.get("test", False)
+        UserQueryBase.__init__(self, _api, *args, **kwargs)
 
     @api.doc(
         description="Get available actimetry databases or details about a specific one. If no database key is "

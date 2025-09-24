@@ -7,12 +7,11 @@ from opentera.services.ServiceAccessManager import (
     LoginType,
 )
 from libopenimu.algorithms.BaseAlgorithm import BaseAlgorithmFactory
+from API.user.UserQueryBase import UserQueryBase
 
 # Parser definition(s)
 get_parser = api.parser()
-get_parser.add_argument(
-    "key", type=str, help="Unique key (identifier) of the processing algorithm to query"
-)
+get_parser.add_argument("key", type=str, help="Unique key (identifier) of the processing algorithm to query")
 get_parser.add_argument(
     "list",
     type=inputs.boolean,
@@ -20,12 +19,10 @@ get_parser.add_argument(
 )
 
 
-class UserQueryActimetryAlgorithm(Resource):
+class UserQueryActimetryAlgorithm(UserQueryBase):
 
     def __init__(self, _api, *args, **kwargs):
-        Resource.__init__(self, _api, *args, **kwargs)
-        self.module = kwargs.get("flaskModule", None)
-        self.test = kwargs.get("test", False)
+        UserQueryBase.__init__(self, _api, *args, **kwargs)
 
     @api.doc(
         description="Get available processing algorithms or details about a specific one. If no algorithm key is "
@@ -38,9 +35,7 @@ class UserQueryActimetryAlgorithm(Resource):
         },
     )
     @api.expect(get_parser)
-    @ServiceAccessManager.token_required(
-        allow_static_tokens=False, allow_dynamic_tokens=True
-    )
+    @ServiceAccessManager.token_required(allow_static_tokens=False, allow_dynamic_tokens=True)
     def get(self):
         """
         Get processing algorithms information
@@ -189,10 +184,7 @@ class UserQueryActimetryAlgorithm(Resource):
 
         # List all available processing algorithms
         if args["list"]:
-            base_algos = [
-                {"key": algo["key"], "name": algo["name"], "version": algo["version"]}
-                for algo in algos
-            ]
+            base_algos = [{"key": algo["key"], "name": algo["name"], "version": algo["version"]} for algo in algos]
             return base_algos, 200
 
         return algos, 200
