@@ -10,19 +10,27 @@ from sqlalchemy import exc
 from opentera.services.ServiceAccessManager import (
     ServiceAccessManager,
     current_login_type,
+    current_user_client,
     LoginType,
 )
+from werkzeug.exceptions import BadRequest
 from opentera.modules.BaseModule import BaseModule
 from libopenimu.algorithms.BaseAlgorithm import BaseAlgorithmFactory
 from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
 
 # Parser definition(s)
 get_parser = api.parser()
-get_parser.add_argument("id_database", type=int, help="database id", required=False)
-get_parser.add_argument("database_uuid", type=str, help="database uuid", required=False)
-get_parser.add_argument("database_participant_uuid", type=str, help="database participant uuid")
+get_parser.add_argument("id_database", type=int, help="database id", required=False, default=None)
+get_parser.add_argument("database_uuid", type=str, help="database uuid", required=False, default=None)
+get_parser.add_argument(
+    "database_participant_uuid", type=str, help="database participant uuid", required=False, default=None
+)
 
 post_schema = api.schema_model("ActimetryDatabaseSchema", ActimetryDatabase.get_json_schema())
+
+
+delete_paraser = api.parser()
+delete_paraser.add_argument("id_database", type=int, help="database id", required=True)
 
 
 class UserQueryActimetryDatabase(Resource):
@@ -50,8 +58,17 @@ class UserQueryActimetryDatabase(Resource):
         """
         Get database information
         """
-        args = get_parser.parse_args()
-        return {}, 200
+        if not current_user_client or current_login_type not in [LoginType.USER_LOGIN]:
+            return gettext("Access denied"), 403
+
+        try:
+            # Parse arguments
+            args = get_parser.parse_args(strict=True)
+            # Verify if any args were provided
+            if not any(args.values()):
+                return gettext("At least one parameter must be provided"), 400
+        except BadRequest as e:
+            return gettext("Invalid parameter: ") + str(e), 400
 
     @api.doc(
         description="Create or update an actimetry database",
@@ -62,7 +79,7 @@ class UserQueryActimetryDatabase(Resource):
         },
     )
     @api.expect(post_schema)
-    @ServiceAccessManager.service_or_others_token_required(allow_dynamic_tokens=True, allow_static_tokens=False)
+    @ServiceAccessManager.token_required(allow_dynamic_tokens=True, allow_static_tokens=False)
     def post(self):
         """
         Create or update an actimetry database
@@ -79,6 +96,9 @@ class UserQueryActimetryDatabase(Resource):
         database_datetime = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
         database_expiration_datetime = Column(TIMESTAMP(timezone=True), nullable=True)
         """
+        if not current_user_client or current_login_type not in [LoginType.USER_LOGIN]:
+            return gettext("Access denied"), 403
+
         try:
             # Validate JSON schema first
             post_schema.validate(request.json)
@@ -97,5 +117,24 @@ class UserQueryActimetryDatabase(Resource):
                     self.module.module_name, UserQueryActimetryDatabase.__name__, "post", 500, "Database error", str(e)
                 )
             return gettext("Database error"), 500
+
+        return {}, 200
+
+    @api.doc(
+        description="Delete an actimetry database",
+        responses={
+            200: "Success - Database deleted",
+            400: "Required parameter is missing",
+            403: "Access denied to the requested database",
+        },
+    )
+    @api.expect(delete_paraser)
+    @ServiceAccessManager.token_required(allow_dynamic_tokens=True, allow_static_tokens=False)
+    def delete(self):
+        """
+        Delete an actimetry database
+        """
+        if not current_user_client or current_login_type not in [LoginType.USER_LOGIN]:
+            return gettext("Access denied"), 403
 
         return {}, 200

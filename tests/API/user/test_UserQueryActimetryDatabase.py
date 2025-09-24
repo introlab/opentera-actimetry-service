@@ -56,3 +56,10 @@ class UserProcessingTest(BaseActimetryServiceAPITest):
         with self.app_context():
             response = self._get_with_token_auth(self.test_client, token=self.admin_user_token)
             self.assertEqual(response.status_code, 400)
+
+    def test_get_endpoint_with_invalid_parameters(self):
+        with self.app_context():
+            response = self._get_with_token_auth(
+                self.test_client, token=self.admin_user_token, params={"invalid": "param"}
+            )
+            self.assertEqual(response.status_code, 400)
