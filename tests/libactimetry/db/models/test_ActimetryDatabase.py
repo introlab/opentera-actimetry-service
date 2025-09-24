@@ -4,7 +4,7 @@ from libactimetry.db.DBManager import DBManager
 from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
 
 
-class DBManagerTest(unittest.TestCase):
+class ActimetryDatabaseTest(unittest.TestCase):
     def setUp(self):
         # Set Fake Flask app
         self._app = Flask(__name__)

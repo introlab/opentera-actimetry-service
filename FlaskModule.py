@@ -285,17 +285,15 @@ class FlaskModule(BaseModule):
         api_ns.add_resource(Version, "/version", resource_class_kwargs=kwargs)
 
         # Add those to implement base (generic) endpoints
-        from API.user.UserQueryActimetryAsset import UserQueryActimetryAsset
-        from API.user.UserQueryActimetryAssetInfos import UserQueryActimetryAssetInfos
-        from API.user.UserQueryActimetryAlgorithm import UserQueryActimetryAlgorithm
-        from API.user.UserQueryActimetryProcessing import UserQueryActimetryProcessing
-        from API.user.UserQueryActimetryDatabase import UserQueryActimetryDatabase
+        # from API.user.UserQueryActimetryAsset import UserQueryActimetryAsset
+        # from API.user.UserQueryActimetryAssetInfos import UserQueryActimetryAssetInfos
+        # from API.user.UserQueryActimetryAlgorithm import UserQueryActimetryAlgorithm
+        # from API.user.UserQueryActimetryProcessing import UserQueryActimetryProcessing
 
-        api_ns.add_resource(UserQueryActimetryAsset, "/assets", resource_class_kwargs=kwargs)
-        api_ns.add_resource(UserQueryActimetryAssetInfos, "/assets/infos", resource_class_kwargs=kwargs)
-        api_ns.add_resource(UserQueryActimetryAlgorithm, "/algorithms", resource_class_kwargs=kwargs)
-        api_ns.add_resource(UserQueryActimetryProcessing, "/processing", resource_class_kwargs=kwargs)
-        api_ns.add_resource(UserQueryActimetryDatabase, "/databases", resource_class_kwargs=kwargs)
+        # api_ns.add_resource(UserQueryActimetryAsset, "/assets", resource_class_kwargs=kwargs)
+        # api_ns.add_resource(UserQueryActimetryAssetInfos, "/assets/infos", resource_class_kwargs=kwargs)
+        # api_ns.add_resource(UserQueryActimetryAlgorithm, "/algorithms", resource_class_kwargs=kwargs)
+        # api_ns.add_resource(UserQueryActimetryProcessing, "/processing", resource_class_kwargs=kwargs)
 
         FlaskModule.init_user_api(module, user_api_ns)
         FlaskModule.init_device_api(module, device_api_ns)
@@ -311,11 +309,13 @@ class FlaskModule(BaseModule):
         from API.user.UserQueryActimetryAssetInfos import UserQueryActimetryAssetInfos
         from API.user.UserQueryActimetryAlgorithm import UserQueryActimetryAlgorithm
         from API.user.UserQueryActimetryProcessing import UserQueryActimetryProcessing
+        from API.user.UserQueryActimetryDatabase import UserQueryActimetryDatabase
 
         namespace.add_resource(UserQueryActimetryAsset, "/assets", resource_class_kwargs=kwargs)
         namespace.add_resource(UserQueryActimetryAssetInfos, "/assets/infos", resource_class_kwargs=kwargs)
         namespace.add_resource(UserQueryActimetryAlgorithm, "/algorithms", resource_class_kwargs=kwargs)
         namespace.add_resource(UserQueryActimetryProcessing, "/processing", resource_class_kwargs=kwargs)
+        namespace.add_resource(UserQueryActimetryDatabase, "/databases", resource_class_kwargs=kwargs)
 
     @staticmethod
     def init_participant_api(module: object, namespace: Namespace, additional_args: dict = dict()):
