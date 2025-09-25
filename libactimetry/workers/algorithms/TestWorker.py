@@ -8,6 +8,7 @@ class TestWorker(BaseWorker):
 
     def init(self):
         print("TestWorker: init")
+        BaseWorker.init(self)
 
     def run(self):
         print("TestWorker: run")
@@ -16,5 +17,4 @@ class TestWorker(BaseWorker):
 if __name__ == '__main__':
     worker = TestWorker()
     worker.init()
-    worker.wait_for_parameters()
     worker.run()

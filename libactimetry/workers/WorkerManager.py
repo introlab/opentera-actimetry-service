@@ -5,6 +5,8 @@ import subprocess
 import pickle
 import datetime
 import json
+import os
+import base64
 
 import Globals as Globals
 from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, WorkerType, WorkerOwnerType, WorkerStatus
@@ -13,7 +15,7 @@ from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, Worker
 class WorkerManager:
     def __init__(self, app):
         self._processes = {}
-        self.flask_app = app
+        self.flask_app = app.flask_app
 
     def worker_log_stdout(self, worker_uuid: uuid.UUID, text: str):
         with self.flask_app.app_context():
@@ -64,25 +66,16 @@ class WorkerManager:
         ActimetryWorkerLog.insert(worker_log)
 
         # Set worker parameters in redis with expiration
-        job_id = f"actimetry.worker.{job_uuid}"
         # Globals.redis_client.redisSet(job_id, json.dumps(params), ex=60)
 
         # Launch subprocess
         # TODO Validate if script exists
-        command = [sys.executable, script, '--datapath', datapath, '--job_id', job_id]
+        command = [sys.executable, os.path.abspath('libactimetry' + os.sep + script), '--datapath', datapath,
+                   '--job_id', job_uuid, '--params', base64.b64encode(json.dumps(params).encode('utf-8'))]
 
         # Launch process, will be monitored by a thread
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self._processes[job_uuid] = process
-
-        # Send parameters to process
-        try:
-            process.communicate(input=pickle.dumps(params), timeout=10)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            self.worker_update_status(job_uuid, WorkerStatus.STATUS_ABORTED)
-            del self._processes[job_uuid]
-            return job_uuid, WorkerStatus.STATUS_ABORTED
 
         # Monitor process termination with callback
         def process_monitor_thread(monitored_processed: subprocess.Popen, worker_uuid: uuid.UUID, worker_man: WorkerManager):

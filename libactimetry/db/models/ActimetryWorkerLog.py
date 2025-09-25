@@ -1,3 +1,5 @@
+import datetime
+
 from libactimetry.db.models.BaseModel import BaseModel
 from sqlalchemy import Column, Integer, String, Sequence, SmallInteger, TIMESTAMP, func, ForeignKey
 from sqlalchemy.orm import relationship
@@ -37,7 +39,7 @@ class ActimetryWorkerLog(BaseModel):
     worker_type = Column(SmallInteger, nullable=False)
     worker_start_time = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
     worker_end_time = Column(TIMESTAMP(timezone=True), nullable=True)
-    worker_update_time = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now(), onupdate=lambda:func.now())
+    worker_update_time = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now(), onupdate=lambda:datetime.datetime.now())
     worker_status = Column(SmallInteger, nullable=False, default=WorkerStatus.STATUS_READY.value)
     worker_parameters = Column(String, nullable=True)
     worker_results = Column(String, nullable=True)
