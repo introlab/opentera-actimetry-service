@@ -105,3 +105,6 @@ class ServiceQueryActimetryDatabaseTest(BaseActimetryServiceAPITest):
                 )
                 self.assertEqual(response.status_code, 200)
                 data = response.json
+                self.assertIsInstance(data, list)
+                # Empty for now
+                self.assertGreaterEqual(len(data), 0)

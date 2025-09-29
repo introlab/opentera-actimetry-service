@@ -103,7 +103,39 @@ class ServiceQueryActimetryResults(ServiceQueryBase):
                 # Open database file
                 dbman = OpenIMUDBManager(database_file, overwrite=False, echo=False, newfile=False)
 
-                return {}, 200
+                # Get results
+                all_processed_data = dbman.get_all_processed_data()
+                """
+                    id_processed_data = Column(Integer, Sequence('id_processed_data_sequence'), primary_key=True, autoincrement=True)
+                    id_data_processor = Column(Integer, nullable=False)
+                    name = Column(String, nullable=False)
+                    data = Column(BLOB, nullable=False)
+                    params = Column(String, nullable=True)
+                    processed_time = Column(TIMESTAMP, nullable=False)
+                """
+                results = []
+
+                # We assume here data is JSON encoded in the BLOB
+                # We also assume params is JSON encoded in the string
+
+                # TODO Validate data and params with JSON schema from the algorithm
+                for processed_data in all_processed_data:
+                    try:
+                        result = {
+                            "id_processed_data": processed_data.id_processed_data,
+                            "id_data_processor": processed_data.id_data_processor,
+                            "name": processed_data.name,
+                            "data": json.loads(processed_data.data.decode("utf-8")),
+                            "params": json.loads(processed_data.params) if processed_data.params else None,
+                            "processed_time": (
+                                processed_data.processed_time.isoformat() if processed_data.processed_time else None
+                            ),
+                        }
+                        results.append(result)
+                    except (JSONDecodeError, TypeError) as e:
+                        # If data is not valid JSON, skip this entry
+                        continue
+                return results, 200
 
             except Exception as e:
                 return gettext("Error opening database: ") + str(e), 500
