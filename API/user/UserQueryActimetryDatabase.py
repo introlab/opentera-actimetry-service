@@ -35,8 +35,8 @@ get_parser.add_argument(
 post_schema = api.schema_model("ActimetryDatabaseSchema", ActimetryDatabase.get_json_schema())
 
 
-delete_paraser = api.parser()
-delete_paraser.add_argument("id_database", type=int, help="database id", required=True)
+delete_parser = api.parser()
+delete_parser.add_argument("id_database", type=int, help="database id", required=True)
 
 
 class UserQueryActimetryDatabase(UserQueryBase):
@@ -71,6 +71,32 @@ class UserQueryActimetryDatabase(UserQueryBase):
             # Verify if any args were provided
             if not any(args.values()):
                 return gettext("At least one parameter must be provided"), 400
+
+            # if id_database is provided, return that database
+            if args["id_database"] is not None:
+                database = ActimetryDatabase.get_by_id(args["id_database"])
+                if not database:
+                    return gettext("No database found"), 404
+                if not self._verify_session_access(database.id_session):
+                    return gettext("Access denied to that database"), 403
+                return database.to_json(), 200
+            # if database_uuid is provided, return that database
+            elif args["database_uuid"] is not None:
+                database = ActimetryDatabase.get_by_uuid(args["database_uuid"])
+                if not database:
+                    return gettext("No database found"), 404
+                if not self._verify_session_access(database.id_session):
+                    return gettext("Access denied to that database"), 403
+                return database.to_json(), 200
+            # if database_participant_uuid is provided, return the database for the participant
+            elif args["database_participant_uuid"] is not None:
+                participant_info = self._get_participant_info(args["database_participant_uuid"])
+                if not participant_info:
+                    return gettext("No access to participant"), 403
+                database = ActimetryDatabase.get_for_participant(args["database_participant_uuid"])
+                if not database:
+                    return gettext("No database found for participant"), 404
+                return database.to_json(), 200
         except BadRequest as e:
             return gettext("Invalid parameter: ") + str(e), 400
 
@@ -180,7 +206,7 @@ class UserQueryActimetryDatabase(UserQueryBase):
             403: "Access denied to the requested database",
         },
     )
-    @api.expect(delete_paraser)
+    @api.expect(delete_parser)
     @ServiceAccessManager.token_required(allow_dynamic_tokens=True, allow_static_tokens=False)
     def delete(self):
         """
@@ -189,4 +215,40 @@ class UserQueryActimetryDatabase(UserQueryBase):
         if not current_user_client or current_login_type not in [LoginType.USER_LOGIN]:
             return gettext("Access denied"), 403
 
-        return {}, 200
+        try:
+            # Parse arguments
+            args = delete_parser.parse_args(strict=True)
+
+            # Get database to delete
+            database = ActimetryDatabase.get_by_id(args["id_database"])
+            if not database:
+                return gettext("No database found"), 404
+            if not self._verify_session_access(database.id_session):
+                return gettext("Access denied to that database"), 403
+
+            # Delete database file and entry
+            database_folder = Globals.config_man.actimetry_service_config["databases_directory"]
+            if database.delete_actimetry_database(database_folder):
+                return {}, 200
+            else:
+                return gettext("Error deleting database"), 500
+
+        except KeyError as e:
+            return gettext("Required parameter is missing"), 400
+        except ValidationError as e:
+            return gettext("Invalid JSON structure"), 400
+        except SchemaError as e:
+            return gettext("Invalid JSON schema"), 400
+        except JSONDecodeError as e:
+            return gettext("Invalid JSON"), 400
+        except exc.SQLAlchemyError as e:
+            if self.module:
+                self.module.logger.log_error(
+                    self.module.module_name,
+                    UserQueryActimetryDatabase.__name__,
+                    "delete",
+                    500,
+                    "Database error",
+                    str(e),
+                )
+            return gettext("Database error"), 500
