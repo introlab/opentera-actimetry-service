@@ -131,6 +131,8 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
         self.flask_app = Flask("FakeActimetryService")
         self.config_man = ConfigManager()
         self.config_man.create_defaults()
+        self.config_man.backend_config["hostname"] = "127.0.0.1"
+        self.config_man.redis_config["hostname"] = "127.0.0.1"
 
         self.redis = redis.Redis(
             host=self.config_man.redis_config["hostname"],
@@ -179,6 +181,10 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
             )
         # Setup modules
         self.flask_module = FakeFlaskModule(self.config_man, self.flask_app, self)
+
+        # WORKER MANAGER
+        from libactimetry.workers.WorkerManager import WorkerManager
+        Globals.worker_man = WorkerManager(self.flask_module)
 
     def reset_tera_server_database_and_create_service(self):
         # Reset database

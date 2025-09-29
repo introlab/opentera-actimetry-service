@@ -71,17 +71,21 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         self.assertIsNotNone(self.test_client)
 
         # Get tokens for tests
-        self._admin_user = self._login_user("admin", "admin")
-        self.admin_user_token = self._admin_user["user_token"]
-        devices = self._service.get_from_opentera_with_token(token=self.admin_user_token, api_url="/api/user/devices")
-        self.device_token = devices.json()[0]["device_token"]
-        self.id_device = devices.json()[0]["id_device"]
-        participants = self._service.get_from_opentera_with_token(
-            token=self.admin_user_token, api_url="/api/user/participants", params={"id_project": 1}
-        )
-        self.participant_static_token = participants.json()[0]["participant_token"]
-        participant = self._login_participant("participant1", "opentera")
-        self.participant_dynamic_token = participant["participant_token"]
+        self._admin_user = self._login_user('admin', 'admin')
+        self.admin_user_token = self._admin_user['user_token']
+
+        self.site_admin_token = self._login_user('siteadmin', 'siteadmin')['user_token']
+
+        devices = self._service.get_from_opentera_with_token(token=self.admin_user_token,
+                                                             api_url='/api/user/devices')
+        self.device_token = devices.json()[0]['device_token']
+        self.id_device = devices.json()[0]['id_device']
+        participants = self._service.get_from_opentera_with_token(token=self.admin_user_token,
+                                                                  api_url='/api/user/participants',
+                                                                  params={'id_project': 1})
+        self.participant_static_token = participants.json()[0]['participant_token']
+        participant = self._login_participant('participant1', 'opentera')
+        self.participant_dynamic_token = participant['participant_token']
 
     def tearDown(self):
         with self.app_context():

@@ -2,6 +2,7 @@ import uuid
 
 from tests.API.BaseActimetryServiceAPITest import BaseActimetryServiceAPITest
 from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, WorkerOwnerType, WorkerType
+from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
 
 
 class UserProcessingTest(BaseActimetryServiceAPITest):
@@ -78,4 +79,40 @@ class UserProcessingTest(BaseActimetryServiceAPITest):
             ActimetryWorkerLog.insert(log)
             response = self._get_with_token_auth(self.test_client, token=self.admin_user_token,
                                                  params={'uuid': log.worker_uuid})
+            self.assertEqual(response.status_code, 200)
+
+    def test_get_endpoint_with_forbidden_worker_uuid(self):
+        with self.app_context():
+            # Create sample worker in database
+            log = ActimetryWorkerLog()
+            log.worker_uuid = str(uuid.uuid4())
+            log.worker_owner_type = WorkerOwnerType.OWNER_USER.value
+            log.worker_owner_uuid = self._admin_user['user_uuid']
+            log.worker_type = WorkerType.TYPE_GENERAL.value
+            ActimetryWorkerLog.insert(log)
+            response = self._get_with_token_auth(self.test_client, token=self.site_admin_token,
+                                                 params={'uuid': log.worker_uuid})
+            self.assertEqual(response.status_code, 403)
+
+    def test_post_endpoint_worker(self):
+        with self.app_context():
+            # Get participant uuid to test
+            response = self._service.get_from_opentera_with_token(token=self.admin_user_token,
+                                                                  api_url='/api/user/participants',
+                                                                  params={'id_project': 1})
+
+            participant_uuid = response.json()[0]['participant_uuid']
+
+            db = ActimetryDatabase()
+            db.id_session = 1
+            db.database_uuid = str(uuid.uuid4())
+            db.database_participant_uuid = participant_uuid
+            db.database_name = 'test_database'
+            ActimetryDatabase.insert(db)
+
+            params = {'worker': {'key': 'Test', 'participant_uuid': participant_uuid, 'parameters':
+                {'parameter1': 1.234, 'parameter2': 'p2', 'parameter3': "false"}}}
+
+            response = self._post_with_token_auth(self.test_client, token=self.admin_user_token,
+                                                  json=params)
             self.assertEqual(response.status_code, 200)

@@ -2,8 +2,8 @@ from influxdb_client import InfluxDBClient
 import pandas as pd
 
 # InfluxDB setup
-url = "http://influxdb:8086"
-token = "my-super-token"
+url = "http://127.0.0.1:8086"
+token = "QZhiRft2wrZOqfM5epkW_c0OIjk8oV1E5EKW3V_qjZPyGMU7ZWk42LmukQ63Ar95tC98MEYwIINKIUEaeVSvYA=="
 org = "my-org"
 bucket = "my-bucket"
 

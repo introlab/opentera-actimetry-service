@@ -94,6 +94,9 @@ class UserQueryActimetryProcessing(UserQueryBase):
         # Validate key against known algorithms
         # TODO Fetch list from libopenimu
         known_algos = ["evenson2008", "freedson1998"]
+        if self.test:
+            known_algos.append('Test')
+
         if json_worker["key"] not in known_algos:
             return gettext("Invalid algorithm key"), 400
 
@@ -101,7 +104,7 @@ class UserQueryActimetryProcessing(UserQueryBase):
         participant = current_user_client.do_get_request_to_backend(
             path="/api/user/participants", params={"participant_uuid": json_worker["participant_uuid"]}
         )
-        if not participant:
+        if not participant.json():
             return gettext("Forbidden access to the participant"), 403
 
         # Check if there's already a database created for that participant.
@@ -111,10 +114,10 @@ class UserQueryActimetryProcessing(UserQueryBase):
 
         # Ok, start worker now!
         script_name = (
-            "workers/algorithms/" + json_worker["key"] + ".py"
+            "workers/algorithms/" + json_worker["key"] + "Worker.py"
         )  # TODO: Another way to find algorithms scripts?
         database_path = (
-            Globals.service.config_man.service_config["database_directory"] + os.sep + database.database_uuid
+            Globals.service.config_man.actimetry_service_config["databases_directory"] + os.sep + database.database_uuid
         )
         (work_uuid, worker_status) = Globals.worker_man.start_processing_worker(
             script=script_name,

@@ -39,7 +39,7 @@ class ActimetryDatabase(BaseModel):
     database_uuid = Column(String(36), nullable=False, unique=True)
     database_participant_uuid = Column(String(36), nullable=False)  # Participant to which the database is linked
     database_name = Column(String, nullable=False)
-    database_type = Column(Integer, nullable=False, default=ActimetryDatabaseType.DATABASETYPE_OPENIMU)
+    database_type = Column(Integer, nullable=False, default=ActimetryDatabaseType.DATABASETYPE_OPENIMU.value)
     database_parameters = Column(
         JSON, nullable=True
     )  # Specific database parameter, such as connection settings, if needed
