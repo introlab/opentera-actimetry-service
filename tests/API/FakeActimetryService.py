@@ -64,11 +64,13 @@ class FakeFlaskModule(BaseModule):
         self.user_api_namespace = self.api.namespace("user", description="Fake Actimetry User API")
         self.participant_api_namespace = self.api.namespace("participant", description="Fake Actimetry Participant API")
         self.device_api_namespace = self.api.namespace("device", description="Fake Actimetry Device API")
+        self.service_api_namespace = self.api.namespace("service", description="Fake Actimetry Service API")
 
         self.setup_fake_actimetry_service_api(flask_app)
         self.setup_fake_user_api(flask_app)
         self.setup_fake_participant_api(flask_app)
         self.setup_fake_device_api(flask_app)
+        self.setup_fake_service_api(flask_app)
 
     def setup_fake_actimetry_service_api(self, flask_app):
         with flask_app.app_context():
@@ -115,6 +117,18 @@ class FakeFlaskModule(BaseModule):
 
             # The trick is to initialize main server api to the newly created namespace
             FlaskModule.init_device_api(self, self.device_api_namespace, additional_args)
+
+    def setup_fake_service_api(self, flask_app):
+        with flask_app.app_context():
+            # Setup Fake API
+            additional_args = {
+                "test": True,
+                "service": self.service,
+                "flask_module": self,
+            }
+
+            # The trick is to initialize main server api to the newly created namespace
+            FlaskModule.init_service_api(self, self.service_api_namespace, additional_args)
 
 
 class FakeActimetryService(ServiceOpenTeraWithAssets):
