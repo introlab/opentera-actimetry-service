@@ -50,8 +50,7 @@ class FakeFlaskModule(BaseModule):
         self.flask_app.secret_key = str(uuid.uuid4())  # Normally service UUID
         self.flask_app.config.update({"SESSION_TYPE": "redis"})
         redis_url = redis.from_url(
-            "redis://%(username)s:%(password)s@%(hostname)s:%(port)s/%(db)s"
-            % self.config.redis_config
+            "redis://%(username)s:%(password)s@%(hostname)s:%(port)s/%(db)s" % self.config.redis_config
         )
 
         self.flask_app.config.update({"SESSION_REDIS": redis_url})
@@ -62,10 +61,9 @@ class FakeFlaskModule(BaseModule):
         # Disable flask cache
         self.flask_app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 
-        self.user_api_namespace = self.api.namespace('user', description='Fake Actimetry User API')
-        self.participant_api_namespace = self.api.namespace('participant',
-                                                            description='Fake Actimetry Participant API')
-        self.device_api_namespace = self.api.namespace('device', description='Fake Actimetry Device API')
+        self.user_api_namespace = self.api.namespace("user", description="Fake Actimetry User API")
+        self.participant_api_namespace = self.api.namespace("participant", description="Fake Actimetry Participant API")
+        self.device_api_namespace = self.api.namespace("device", description="Fake Actimetry Device API")
 
         self.setup_fake_actimetry_service_api(flask_app)
         self.setup_fake_user_api(flask_app)
@@ -131,8 +129,8 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
         self.flask_app = Flask("FakeActimetryService")
         self.config_man = ConfigManager()
         self.config_man.create_defaults()
-        self.config_man.backend_config["hostname"] = "127.0.0.1"
-        self.config_man.redis_config["hostname"] = "127.0.0.1"
+        # self.config_man.backend_config["hostname"] = "127.0.0.1"
+        # self.config_man.redis_config["hostname"] = "127.0.0.1"
 
         self.redis = redis.Redis(
             host=self.config_man.redis_config["hostname"],
@@ -153,8 +151,7 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
 
             # Get service info from redis
             service_info = self.redis.get(
-                RedisVars.RedisVar_ServicePrefixKey
-                + self.config_man.service_config["service_key"]
+                RedisVars.RedisVar_ServicePrefixKey + self.config_man.service_config["service_key"]
             )
 
             # Create a fake uuid if not set in redis
@@ -162,9 +159,7 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
             if service_info:
                 service_info = json.loads(service_info)
                 if "service_uuid" in service_info:
-                    self.config_man.service_config["ServiceUUID"] = service_info[
-                        "service_uuid"
-                    ]
+                    self.config_man.service_config["ServiceUUID"] = service_info["service_uuid"]
                     self.service_uuid = service_info["service_uuid"]
                 if "id_service" in service_info:
                     id_service = service_info["id_service"]
@@ -173,7 +168,7 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
             ServiceOpenTeraWithAssets.__init__(
                 self,
                 self.config_man,
-                service_info
+                service_info,
                 # {
                 #     "service_key": self.config_man.service_config["service_key"],
                 #     "id_service": id_service,
@@ -184,6 +179,7 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
 
         # WORKER MANAGER
         from libactimetry.workers.WorkerManager import WorkerManager
+
         Globals.worker_man = WorkerManager(self.flask_module)
 
     def reset_tera_server_database_and_create_service(self):
@@ -205,9 +201,7 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
             pass
         self.service_info = service_infos
 
-    def setup_site_access_to_service(
-        self, site_id: int, update_projects: bool = True
-    ) -> bool:
+    def setup_site_access_to_service(self, site_id: int, update_projects: bool = True) -> bool:
         server_url = f'https://{self.config_man.backend_config["hostname"]}:{self.config_man.backend_config["port"]}'
         # Setup service for all sites and projects
         params = {"with_websocket": False}
@@ -222,17 +216,13 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
 
             # Get Service id SurveyJSService
             params = {"service_key": "SurveyJSService"}
-            response = self.get_from_opentera_with_token(
-                token, "/api/user/services", params=params
-            )
+            response = self.get_from_opentera_with_token(token, "/api/user/services", params=params)
             if response.status_code == 200 and len(response.json()) > 0:
                 service_info = response.json()[0]
 
                 # Get site with site_id
                 params = {"id_site": site_id}
-                response = self.get_from_opentera_with_token(
-                    token, "/api/user/sites", params=params
-                )
+                response = self.get_from_opentera_with_token(token, "/api/user/sites", params=params)
                 if response.status_code == 200 and len(response.json()) > 0:
                     site = response.json()[0]
 
@@ -243,18 +233,14 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
                             "sites": [site],
                         }
                     }
-                    response = self.post_to_opentera_with_token(
-                        token, "/api/user/services/sites", json_data=json_data
-                    )
+                    response = self.post_to_opentera_with_token(token, "/api/user/services/sites", json_data=json_data)
                     if response.status_code != 200:
                         # TODO Raise exception
                         pass
 
                     # Get all projects for this site
                     params = {"id_site": site_id}
-                    response = self.get_from_opentera_with_token(
-                        token, "/api/user/projects", params=params
-                    )
+                    response = self.get_from_opentera_with_token(token, "/api/user/projects", params=params)
                     if response.status_code == 200 and len(response.json()) > 0:
                         projects = response.json()
 
@@ -342,9 +328,7 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
         server_url = f'https://{self.config_man.backend_config["hostname"]}:{self.config_man.backend_config["port"]}'
         headers = {"Authorization": f"OpenTera {token}"}
         headers.update(additional_headers)
-        return requests.get(
-            f"{server_url}{api_url}", headers=headers, params=params, verify=False
-        )
+        return requests.get(f"{server_url}{api_url}", headers=headers, params=params, verify=False)
 
     def post_to_opentera_with_token(
         self,
@@ -372,9 +356,7 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
         if additional_headers:
             headers.update(additional_headers)
         server_url = f'https://{self.config_man.backend_config["hostname"]}:{self.config_man.backend_config["port"]}'
-        return requests.delete(
-            f"{server_url}{api_url}", headers=headers, params=params, verify=False
-        )
+        return requests.delete(f"{server_url}{api_url}", headers=headers, params=params, verify=False)
 
     def asset_event_received(self, event: messages.DatabaseEvent):
         pass

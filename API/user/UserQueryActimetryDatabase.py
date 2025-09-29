@@ -113,18 +113,6 @@ class UserQueryActimetryDatabase(UserQueryBase):
     def post(self):
         """
         Create or update an actimetry database
-
-
-        __tablename__ = "t_actimetry_databases"
-        id_database = Column(Integer, Sequence('id_database_sequence'), primary_key=True, autoincrement=True)
-        id_session = Column(Integer, nullable=False)
-        database_uuid = Column(String(36), nullable=False, unique=True)
-        database_participant_uuid = Column(String(36), nullable=False)  # Participant to which the database is linked
-        database_name = Column(String, nullable=False)
-        database_type = Column(Integer, nullable=False, default=ActimetryDatabaseType.DATABASETYPE_OPENIMU)
-        database_parameters = Column(JSON, nullable=True)  # Specific database parameter, such as connection settings, if needed
-        database_datetime = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
-        database_expiration_datetime = Column(TIMESTAMP(timezone=True), nullable=True)
         """
         if not current_user_client or current_login_type not in [LoginType.USER_LOGIN]:
             return gettext("Access denied"), 403
@@ -180,6 +168,20 @@ class UserQueryActimetryDatabase(UserQueryBase):
                     return gettext("Unsupported database type"), 400
 
                 return new_database.to_json(), 200
+            else:
+                # Update existing database
+                database = ActimetryDatabase.get_by_id(database_info["id_database"])
+                if not database:
+                    return gettext("No database found"), 404
+                if not self._verify_session_access(database.id_session):
+                    return gettext("Access denied to that database"), 403
+
+                # Update fields, allowing only name and parameters to be updated
+                database.database_name = database_info.get("database_name", database.database_name)
+                database.database_parameters = database_info.get("database_parameters", database.database_parameters)
+                database.commit()
+
+                return database.to_json(), 200
 
         except KeyError as e:
             return gettext("Required parameter is missing"), 400

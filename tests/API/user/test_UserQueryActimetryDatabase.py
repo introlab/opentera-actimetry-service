@@ -4,7 +4,7 @@ from tests.API.BaseActimetryServiceAPITest import BaseActimetryServiceAPITest
 from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, WorkerOwnerType, WorkerType
 
 
-class UserProcessingTest(BaseActimetryServiceAPITest):
+class UserQueryActimetryDatabaseTest(BaseActimetryServiceAPITest):
     test_endpoint = "/api/user/databases"
 
     @classmethod
