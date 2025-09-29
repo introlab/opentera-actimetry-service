@@ -13,10 +13,13 @@ class ServiceQueryBase(Resource):
         self.test: bool = kwargs.get("test", False)
 
     def _verify_session_access(self, id_session: int) -> bool:
-        return False
+        # TODO implement proper access control
+        return True
 
     def _verify_participant_access(self, participant_uuid: str) -> bool:
-        return False
+        # TODO implement proper access control
+        return True
 
     def _get_participant_info(self, participant_uuid: str) -> dict | None:
+        # TODO
         return None

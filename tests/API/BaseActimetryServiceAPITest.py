@@ -86,6 +86,8 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         participant = self._login_participant("participant1", "opentera")
         self.participant_dynamic_token = participant["participant_token"]
 
+        self.service_token = self._service.service_token
+
     def tearDown(self):
         with self.app_context():
             pass
