@@ -106,7 +106,24 @@ class UserQueryActimetryDatabaseInfos(UserQueryBase):
                 file_size = os.path.getsize(database_file)
 
                 dbman = OpenIMUDBManager(database_file, overwrite=False, echo=False, newfile=False)
-                return {"file_size": file_size}, 200
+
+                dataset = dbman.get_dataset()
+                """
+                    name = Column(String, nullable=False, primary_key=True)
+                    description = Column(String)
+                    creation_date = Column(TIMESTAMP, nullable=False)
+                    upload_date = Column(TIMESTAMP, nullable=False)
+                    author = Column(String, nullable=False)
+                """
+                dataset_info = {
+                    "name": dataset.name,
+                    "description": dataset.description,
+                    "creation_date": str(dataset.creation_date),
+                    "upload_date": str(dataset.upload_date),
+                    "author": dataset.author,
+                }
+
+                return {"file_size": file_size, "dataset_info": dataset_info}, 200
 
             except Exception as e:
                 return gettext("Error opening database: ") + str(e), 500

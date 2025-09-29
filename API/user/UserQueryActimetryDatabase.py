@@ -1,5 +1,6 @@
 import os
 import json
+from datetime import datetime
 from flask_babel import gettext
 from flask_restx import Resource, inputs
 from flask import request
@@ -23,6 +24,7 @@ from API.user.UserQueryBase import UserQueryBase
 import Globals as Globals
 from libopenimu.db.DBManager import DBManager as OpenIMUDBManager
 from libopenimu.models.Participant import Participant as OpenIMUParticipant
+from libopenimu.models.DataSet import DataSet as OpenIMUDataSet
 
 # Parser definition(s)
 get_parser = api.parser()
@@ -160,8 +162,20 @@ class UserQueryActimetryDatabase(UserQueryBase):
                     participant = OpenIMUParticipant()
                     participant.name = participant_info["participant_name"]
                     participant.description = json.dumps(participant_info)
-                    # Commit to DB
                     manager.session.add(participant)
+
+                    # Create dataset
+                    dataset = OpenIMUDataSet()
+                    dataset.name = "Main dataset"
+                    dataset.description = (
+                        f"Dataset for participant {participant.name} [{participant_info['participant_uuid']}]"
+                    )
+                    dataset.author = "Actimetry Service"
+                    dataset.creation_date = datetime.now()
+                    dataset.upload_date = datetime.now()
+                    manager.session.add(dataset)
+
+                    # Commit to DB
                     manager.session.commit()
 
                 else:

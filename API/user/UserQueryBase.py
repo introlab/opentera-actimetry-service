@@ -78,7 +78,7 @@ class UserQueryBase(Resource):
 
         # Call user api to get participant information
         response: Response = current_user_client.do_get_request_to_backend(
-            "/api/user/participants", params={"participant_uuid": participant_uuid}
+            "/api/user/participants", params={"participant_uuid": participant_uuid, "list": True}
         )
         if response.status_code != 200:
             return None

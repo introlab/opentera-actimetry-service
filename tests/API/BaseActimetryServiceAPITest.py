@@ -71,21 +71,20 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         self.assertIsNotNone(self.test_client)
 
         # Get tokens for tests
-        self._admin_user = self._login_user('admin', 'admin')
-        self.admin_user_token = self._admin_user['user_token']
+        self._admin_user = self._login_user("admin", "admin")
+        self.admin_user_token = self._admin_user["user_token"]
 
-        self.site_admin_token = self._login_user('siteadmin', 'siteadmin')['user_token']
+        self.site_admin_token = self._login_user("siteadmin", "siteadmin")["user_token"]
 
-        devices = self._service.get_from_opentera_with_token(token=self.admin_user_token,
-                                                             api_url='/api/user/devices')
-        self.device_token = devices.json()[0]['device_token']
-        self.id_device = devices.json()[0]['id_device']
-        participants = self._service.get_from_opentera_with_token(token=self.admin_user_token,
-                                                                  api_url='/api/user/participants',
-                                                                  params={'id_project': 1})
-        self.participant_static_token = participants.json()[0]['participant_token']
-        participant = self._login_participant('participant1', 'opentera')
-        self.participant_dynamic_token = participant['participant_token']
+        devices = self._service.get_from_opentera_with_token(token=self.admin_user_token, api_url="/api/user/devices")
+        self.device_token = devices.json()[0]["device_token"]
+        self.id_device = devices.json()[0]["id_device"]
+        participants = self._service.get_from_opentera_with_token(
+            token=self.admin_user_token, api_url="/api/user/participants", params={"id_project": 1}
+        )
+        self.participant_static_token = participants.json()[0]["participant_token"]
+        participant = self._login_participant("participant1", "opentera")
+        self.participant_dynamic_token = participant["participant_token"]
 
     def tearDown(self):
         with self.app_context():
@@ -195,49 +194,87 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         return response.json()
 
     def _get_participants(self, user_token: str, id_site: int):
-        params = {"full": True, "id_site": id_site}
-        response = self._service.get_from_opentera_with_token(
-            token=user_token, api_url="/api/user/participants", params=params
-        )
-        self.assertEqual(response.status_code, 200)
-        return response.json()
+        with self.app_context():
+            params = {"full": True, "id_site": id_site}
+            response = self._service.get_from_opentera_with_token(
+                token=user_token, api_url="/api/user/participants", params=params
+            )
+            self.assertEqual(response.status_code, 200)
+            return response.json()
 
     def _get_actimetry_session_type(self, user_token: str) -> dict:
-        params = {"list": True}
-        response = self._service.get_from_opentera_with_token(
-            token=user_token, api_url="/api/user/sessiontypes", params=params
-        )
-        self.assertEqual(response.status_code, 200)
-        session_types = response.json()
-        for session_type in session_types:
-            if session_type["session_type_name"] == "Actimetry":
-                return session_type
+        with self.app_context():
+            params = {"list": True}
+            response = self._service.get_from_opentera_with_token(
+                token=user_token, api_url="/api/user/sessiontypes", params=params
+            )
+            self.assertEqual(response.status_code, 200)
+            session_types = response.json()
+            for session_type in session_types:
+                if session_type["session_type_name"] == "Actimetry":
+                    return session_type
 
         self.fail("No Actimetry session type found")
 
     def _create_session(self, user_token: str, id_session_type: int, id_participant: int) -> dict:
-        params = {}
+        with self.app_context():
+            params = {}
 
-        session_info = {
-            "session": {
-                "id_creator_participant": id_participant,
-                "id_session": 0,  # New Session
-                "id_session_type": id_session_type,
-                "session_participants_ids": [id_participant],
-                "session_comments": "string",
-                "session_duration": 0,
-                "session_name": "string",
-                "session_parameters": "string",
-                "session_start_datetime": datetime.now().isoformat(),
-                "session_status": 0,
+            session_info = {
+                "session": {
+                    "id_creator_participant": id_participant,
+                    "id_session": 0,  # New Session
+                    "id_session_type": id_session_type,
+                    "session_participants_ids": [id_participant],
+                    "session_comments": "string",
+                    "session_duration": 0,
+                    "session_name": "string",
+                    "session_parameters": "string",
+                    "session_start_datetime": datetime.now().isoformat(),
+                    "session_status": 0,
+                }
             }
-        }
-        response = self._service.post_to_opentera_with_token(
-            token=user_token, api_url="/api/user/sessions", params=params, json_data=session_info
-        )
-        self.assertEqual(response.status_code, 200)
-        self.assertGreater(len(response.json()), 0)
-        return response.json()[0]
+            response = self._service.post_to_opentera_with_token(
+                token=user_token, api_url="/api/user/sessions", params=params, json_data=session_info
+            )
+            self.assertEqual(response.status_code, 200)
+            self.assertGreater(len(response.json()), 0)
+            return response.json()[0]
+
+    def _create_database_for_participant(self, participant_info: dict) -> dict:
+        with self.app_context():
+            # Get session type
+            session_type_info: dict = self._get_actimetry_session_type(self.admin_user_token)
+
+            # Create a session to link the database to
+            session = self._create_session(
+                user_token=self.admin_user_token,
+                id_session_type=session_type_info["id_session_type"],
+                id_participant=participant_info["id_participant"],
+            )
+
+            self.assertIsNotNone(session)
+            self.assertIn("id_session", session)
+            self.assertGreater(session["id_session"], 0)
+
+            # Create a database linked to that session
+            database_info = {
+                "database": {
+                    "id_database": 0,
+                    "database_name": "Test Database",
+                    "database_description": "This is a test database",
+                    "database_type": 1,  # SQLite
+                    "database_participant_uuid": participant_info["participant_uuid"],
+                    "id_session": session["id_session"],
+                    "database_parameters": '{"param1": "value1", "param2": "value2"}',
+                }
+            }
+
+            response = self._post_with_token_auth(
+                self.test_client, token=self.admin_user_token, json=database_info, endpoint="/api/user/databases"
+            )
+            self.assertEqual(response.status_code, 200)
+            return response.json
 
     def _get_with_token_auth(
         self,
