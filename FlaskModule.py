@@ -179,10 +179,11 @@ api = CustomAPI(
 )
 
 # Namespaces
-service_api_ns = api.namespace("", description="ActimetryService API")
+base_service_api_ns = api.namespace("", description="ActimetryService API")
 user_api_ns = api.namespace("user", description="API for User calls")
 participant_api_ns = api.namespace("participant", description="API for Participant calls")
 device_api_ns = api.namespace("device", description="API for Device calls")
+service_api_ns = api.namespace("service", description="API for Service calls")
 
 
 class FlaskModule(BaseModule):
@@ -210,7 +211,7 @@ class FlaskModule(BaseModule):
         self.service = service
 
         # Init API
-        FlaskModule.init_api(self.service, self, service_api_ns)
+        FlaskModule.init_api(self.service, self, base_service_api_ns)
 
         # Init Views
         self.init_views()
@@ -271,7 +272,7 @@ class FlaskModule(BaseModule):
         pass
 
     @staticmethod
-    def init_api(service: object, module: object, api_ns=service_api_ns, additional_args=dict()):
+    def init_api(service: object, module: object, api_ns=base_service_api_ns, additional_args=dict()):
         """
         Initialize the API for the Flask module.
         """
@@ -284,20 +285,10 @@ class FlaskModule(BaseModule):
 
         api_ns.add_resource(Version, "/version", resource_class_kwargs=kwargs)
 
-        # Add those to implement base (generic) endpoints
-        # from API.user.UserQueryActimetryAsset import UserQueryActimetryAsset
-        # from API.user.UserQueryActimetryAssetInfos import UserQueryActimetryAssetInfos
-        # from API.user.UserQueryActimetryAlgorithm import UserQueryActimetryAlgorithm
-        # from API.user.UserQueryActimetryProcessing import UserQueryActimetryProcessing
-
-        # api_ns.add_resource(UserQueryActimetryAsset, "/assets", resource_class_kwargs=kwargs)
-        # api_ns.add_resource(UserQueryActimetryAssetInfos, "/assets/infos", resource_class_kwargs=kwargs)
-        # api_ns.add_resource(UserQueryActimetryAlgorithm, "/algorithms", resource_class_kwargs=kwargs)
-        # api_ns.add_resource(UserQueryActimetryProcessing, "/processing", resource_class_kwargs=kwargs)
-
         FlaskModule.init_user_api(module, user_api_ns)
         FlaskModule.init_device_api(module, device_api_ns)
         FlaskModule.init_participant_api(module, participant_api_ns)
+        FlaskModule.init_service_api(module, service_api_ns)
 
     @staticmethod
     def init_user_api(module: object, namespace: Namespace, additional_args: dict = dict()):
@@ -310,12 +301,14 @@ class FlaskModule(BaseModule):
         from API.user.UserQueryActimetryAlgorithm import UserQueryActimetryAlgorithm
         from API.user.UserQueryActimetryProcessing import UserQueryActimetryProcessing
         from API.user.UserQueryActimetryDatabase import UserQueryActimetryDatabase
+        from API.user.UserQueryActimetryDatabaseInfos import UserQueryActimetryDatabaseInfos
 
         namespace.add_resource(UserQueryActimetryAsset, "/assets", resource_class_kwargs=kwargs)
         namespace.add_resource(UserQueryActimetryAssetInfos, "/assets/infos", resource_class_kwargs=kwargs)
         namespace.add_resource(UserQueryActimetryAlgorithm, "/algorithms", resource_class_kwargs=kwargs)
         namespace.add_resource(UserQueryActimetryProcessing, "/processing", resource_class_kwargs=kwargs)
         namespace.add_resource(UserQueryActimetryDatabase, "/databases", resource_class_kwargs=kwargs)
+        namespace.add_resource(UserQueryActimetryDatabaseInfos, "/databases/infos", resource_class_kwargs=kwargs)
 
     @staticmethod
     def init_participant_api(module: object, namespace: Namespace, additional_args: dict = dict()):
@@ -332,6 +325,15 @@ class FlaskModule(BaseModule):
         from API.device.QueryActimetryAsset import QueryActimetryAsset
 
         namespace.add_resource(QueryActimetryAsset, "/assets", resource_class_kwargs=kwargs)
+
+    @staticmethod
+    def init_service_api(module: object, namespace: Namespace, additional_args: dict = dict()):
+        # Default arguments
+        kwargs = {"flaskModule": module}
+        kwargs |= additional_args
+        from API.service.ServiceQueryActimetryResults import ServiceQueryActimetryResults
+
+        namespace.add_resource(ServiceQueryActimetryResults, "/results", resource_class_kwargs=kwargs)
 
     def init_views(self):
         # Default arguments

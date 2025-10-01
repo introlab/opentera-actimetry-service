@@ -44,11 +44,20 @@ class ActimetryDatabase(BaseModel):
         JSON, nullable=True
     )  # Specific database parameter, such as connection settings, if needed
     database_creation_datetime = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
+    database_update_datetime = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now(), onupdate=func.now())
     database_expiration_datetime = Column(TIMESTAMP(timezone=True), nullable=True)
 
     @staticmethod
-    def get_for_participant(participant_uuid: str):
+    def get_for_participant(participant_uuid: str) -> "ActimetryDatabase | None":
         return ActimetryDatabase.query.filter_by(database_participant_uuid=participant_uuid).first()
+
+    @staticmethod
+    def get_by_uuid(database_uuid: str) -> "ActimetryDatabase | None":
+        return ActimetryDatabase.query.filter_by(database_uuid=database_uuid).first()
+
+    @staticmethod
+    def get_by_id(id_database: int) -> "ActimetryDatabase | None":
+        return ActimetryDatabase.query.filter_by(id_database=id_database).first()
 
     @classmethod
     def insert(cls, database: "ActimetryDatabase"):
