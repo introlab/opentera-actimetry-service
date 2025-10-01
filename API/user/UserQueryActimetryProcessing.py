@@ -128,4 +128,4 @@ class UserQueryActimetryProcessing(UserQueryBase):
             database_id=database.id_database,
         )
 
-        return {"work_uuid": work_uuid, "status": worker_status}, 200
+        return {"work_uuid": work_uuid, "status": worker_status.value}, 200

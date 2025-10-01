@@ -1,4 +1,5 @@
 from libactimetry.workers.BaseWorker import BaseWorker
+import time
 
 
 class TestWorker(BaseWorker):
@@ -12,7 +13,7 @@ class TestWorker(BaseWorker):
 
     def run(self):
         print("TestWorker: run")
-        pass
+        time.sleep(2)
 
 if __name__ == '__main__':
     worker = TestWorker()

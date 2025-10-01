@@ -41,10 +41,10 @@ class ActimetryWorkerLog(BaseModel):
     worker_end_time = Column(TIMESTAMP(timezone=True), nullable=True)
     worker_update_time = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now(), onupdate=lambda:datetime.datetime.now())
     worker_status = Column(SmallInteger, nullable=False, default=WorkerStatus.STATUS_READY.value)
-    worker_parameters = Column(String, nullable=True)
-    worker_results = Column(String, nullable=True)
-    worker_logs = Column(String, nullable=True)
-    worker_errors = Column(String, nullable=True)
+    worker_parameters = Column(String, nullable=False, default="")
+    worker_results = Column(String, nullable=False, default="")
+    worker_logs = Column(String, nullable=False, default="")
+    worker_errors = Column(String, nullable=False, default="")
 
     worker_database = relationship('ActimetryDatabase')
 

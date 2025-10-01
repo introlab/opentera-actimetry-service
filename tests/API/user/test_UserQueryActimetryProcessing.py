@@ -1,7 +1,8 @@
 import uuid
+import time
 
 from tests.API.BaseActimetryServiceAPITest import BaseActimetryServiceAPITest
-from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, WorkerOwnerType, WorkerType
+from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, WorkerOwnerType, WorkerType, WorkerStatus
 from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
 
 
@@ -116,3 +117,22 @@ class UserProcessingTest(BaseActimetryServiceAPITest):
             response = self._post_with_token_auth(self.test_client, token=self.admin_user_token,
                                                   json=params)
             self.assertEqual(response.status_code, 200)
+            work_uuid = response.json['work_uuid']
+
+            wait_time = 10  # Wait at most for 10 seconds
+            while wait_time > 0:
+                time.sleep(1)
+                # Query process state to see if it is still running or not
+                response = self._get_with_token_auth(self.test_client, token=self.admin_user_token,
+                                                     params={'uuid': work_uuid})
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue("worker_status" in response.json)
+                if response.json["worker_status"] != WorkerStatus.STATUS_RUNNING.value:
+                    log = ActimetryWorkerLog.get_log_for_worker(work_uuid)
+                    self.assertTrue(log.to_json() == response.json)
+                    self.assertEqual(response.json["worker_status"], WorkerStatus.STATUS_COMPLETED.value)
+                    break
+
+                wait_time -= 1
+
+            self.assertTrue(wait_time > 0)

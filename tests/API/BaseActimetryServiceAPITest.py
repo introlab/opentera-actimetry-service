@@ -41,11 +41,10 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
         Globals.service = cls._service
         Globals.config_man = cls._service.config_man
 
-        # Setup SurveyJS database
+        # Setup database
         cls._service.flask_app.debug = False
         cls._service.flask_app.testing = True
         cls._db_man = DBManager(app=cls._service.flask_app, test=True)
-        # Setup DB in RAM
         # Create file in current directory
         cls._db_man.open_local({"filename": os.path.join(os.getcwd(), "test.db")}, echo=True, ram=True)
 

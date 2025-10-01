@@ -18,17 +18,19 @@ class WorkerManager:
         self.flask_app = app.flask_app
 
     def worker_log_stdout(self, worker_uuid: uuid.UUID, text: str):
+        print("**** worker_log_stdout - thread = " + threading.current_thread().name)
+
         with self.flask_app.app_context():
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
             if worker_log:
-                worker_log.worker_logs.append(text)
+                worker_log.worker_logs += text
                 worker_log.commit()
 
     def worker_log_stderr(self, worker_uuid: uuid.UUID, text: str):
         with self.flask_app.app_context():
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
             if worker_log:
-                worker_log.worker_errors.append(text)
+                worker_log.worker_errors += text
                 worker_log.commit()
 
     def worker_update_status(self, worker_uuid: uuid.UUID, status: WorkerStatus, ended: bool = False):
@@ -40,8 +42,8 @@ class WorkerManager:
                     worker_log.worker_end_time = datetime.datetime.now()
                 worker_log.commit()
 
-            if ended:
-                del self._processes[worker_uuid]
+        if ended:
+            del self._processes[worker_uuid]
 
     def worker_set_results(self, worker_uuid: uuid.UUID, results: str):
         with self.flask_app.app_context():
@@ -52,6 +54,8 @@ class WorkerManager:
 
     def start_processing_worker(self, script: str, datapath: str, params: dict, owner_uuid: str,
                                 owner_type: WorkerOwnerType, database_id: int) -> (uuid.UUID, WorkerStatus):
+        print("**** start_processing_worker - thread = " + threading.current_thread().name)
+
         # Create a job UUID
         job_uuid = str(uuid.uuid4())
 
@@ -77,31 +81,31 @@ class WorkerManager:
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self._processes[job_uuid] = process
 
-        # Monitor process termination with callback
-        def process_monitor_thread(monitored_processed: subprocess.Popen, worker_uuid: uuid.UUID, worker_man: WorkerManager):
-            self.worker_update_status(worker_uuid, WorkerStatus.STATUS_RUNNING)
-            while monitored_processed.poll() is None:
-                output, error = monitored_processed.communicate()
-                if output:
-                    str_output = output.decode("utf-8")
-                    if str_output.find('*** RESULTS ***: '):
-                        worker_man.worker_set_results(worker_uuid, str_output.replace('*** RESULTS ***: ', ''))
-                    else:
-                        worker_man.worker_log_stdout(worker_uuid, str_output)
-                if error:
-                    worker_man.worker_log_stderr(worker_uuid, error.decode('utf-8'))
-
-            monitored_processed.wait()
-            # Get return code
-            return_code = monitored_processed.returncode
-            status = WorkerStatus.STATUS_COMPLETED
-            if return_code != 0:
-                status = WorkerStatus.STATUS_ABORTED
-            worker_man.worker_update_status(worker_uuid, status=status, ended=True)
-            threading.current_thread().join()
-
-
-        thread = threading.Thread(target=process_monitor_thread, args=(process, job_uuid, self))
+        thread = threading.Thread(target=self.process_monitor_thread, args=(process, job_uuid))
         thread.start()
 
         return job_uuid, WorkerStatus.STATUS_RUNNING
+
+    # Monitor process termination with callback
+    def process_monitor_thread(self, monitored_processed: subprocess.Popen, worker_uuid: uuid.UUID):
+        print("**** process_monitor_thread - thread = " + threading.current_thread().name)
+        self.worker_update_status(worker_uuid, WorkerStatus.STATUS_RUNNING)
+        while monitored_processed.poll() is None:
+            output, error = monitored_processed.communicate()
+            if output:
+                str_output = output.decode("utf-8")
+                if str_output.find('*** RESULTS ***: ') >= 0:
+                    self.worker_set_results(worker_uuid, str_output.replace('*** RESULTS ***: ', ''))
+                else:
+                    self.worker_log_stdout(worker_uuid, str_output)
+            if error:
+                self.worker_log_stderr(worker_uuid, error.decode('utf-8'))
+
+        monitored_processed.wait()
+        # Get return code
+        return_code = monitored_processed.returncode
+        status = WorkerStatus.STATUS_COMPLETED
+        if return_code != 0:
+            status = WorkerStatus.STATUS_ABORTED
+        self.worker_update_status(worker_uuid, status=status, ended=True)
+        threading.main_thread().join()
