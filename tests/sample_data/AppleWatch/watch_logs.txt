@@ -1,0 +1,22 @@
+1749484451.870319	3	Activity	2025-06-09 11:54:11.8700	Starting logging session with settings: {  }
+1749484451.874867	3	Battery	2025-06-09 11:54:11.8750	Starting logging session with settings: {   "check_interval" : 1 }
+1749484451.878799	3	Magnetometer	2025-06-09 11:54:11.8790	Starting logging session with settings: {   "frequency" : 50 }
+1749484451.904944	3	HealthKit	2025-06-09 11:54:11.9050	Starting logging session with settings: {   "healthkitTypes" : [     "activeEnergyBurned",     "heartRate",     "restingHeartRate",     "walkingHeartRateAverage",     "stepCount",     "oxygenSaturation",     "vo2Max",     "heartRateVariability",     "bodyTemperature",     "basalEnergyBurned",     "respiratoryRate",     "appleExerciseTime",     "appleStandTime",     "appleMoveTime",     "appleWalkingSteadiness",     "walkingSpeed",     "walkingStepLength"   ] }
+1749484451.908152	3	Tremor	2025-06-09 11:54:11.9080	Starting logging session with settings: {  }
+1749484451.913244	3	HeartRate	2025-06-09 11:54:11.9130	Starting logging session with settings: {   "active_interval" : 16,   "discard_first" : true,   "sampling_interval" : 5 }
+1749484451.916099	3	RawAccelerometer	2025-06-09 11:54:11.9160	Starting logging session with settings: {   "frequency" : 50 }
+1749484451.920073	3	Calorie	2025-06-09 11:54:11.9200	Starting logging session with settings: {  }
+1749484451.92307	3	Pedometer	2025-06-09 11:54:11.9230	Starting logging session with settings: {  }
+1749484451.92557	3	DyskineticSymptoms	2025-06-09 11:54:11.9260	Starting logging session with settings: {  }
+1749484451.928386	3	Gyroscope	2025-06-09 11:54:11.9280	Starting logging session with settings: {   "frequency" : 50 }
+1749484451.941158	3	Location	2025-06-09 11:54:11.9410	Starting logging session with settings: {   "beacons" : {     "namespace" : "01B00000000000002023",     "instanceIdThresholdForGPS" : "000000000000",     "known_beacons" : [      ],     "monitor_all" : true   },   "coordinates" : {     "activity_type" : 4,     "mode" : "Ponctual",     "beacon_proximity_idle_time" : 30,     "period" : 20,     "accuracy" : -1   } }
+1749484451.95572	1	Location	2025-06-09 11:54:11.9560	Current permission status: Authorized when in use
+1749489285.952691	4	Activity	2025-06-09 13:14:45.9530	{start_date: 11:54:11.8700, end_date: None, logger_type: BinaryFile, events_num: 550, most_recent_event:  None}
+1749489285.9553099	4	Battery	2025-06-09 13:14:45.9550	{start_date: 11:54:11.8750, end_date: None, logger_type: BinaryFile, events_num: 15, most_recent_event:  None}
+1749489285.957681	4	Magnetometer	2025-06-09 13:14:45.9580	{start_date: 11:54:11.8790, end_date: None, logger_type: BinaryFile, events_num: 239996, most_recent_event:  None}
+1749489285.96447	4	HealthKit	2025-06-09 13:14:45.9640	{start_date: 11:54:11.9050, end_date: None, logger_type: BinaryFile, events_num: 4798, most_recent_event:  None}
+1749489285.970947	4	Tremor	2025-06-09 13:14:45.9710	{start_date: 11:54:11.9080, end_date: None, logger_type: BinaryFile, events_num: 0, most_recent_event:  None}
+1749489285.97254	4	HeartRate	2025-06-09 13:14:45.9730	{start_date: 11:54:11.9130, end_date: None, logger_type: BinaryFile, events_num: 965, most_recent_event:  None}
+1749489285.99957	4	RawAccelerometer	2025-06-09 13:14:46.0000	{start_date: 11:54:11.9160, end_date: None, logger_type: BinaryFile, events_num: 240004, most_recent_event:  None}
+1749489286.004087	4	Calorie	2025-06-09 13:14:46.0040	{start_date: 11:54:11.9200, end_date: None, logger_type: BinaryFile, events_num: 1873, most_recent_event:  None}
+1749489286.005196	4	Pedometer	2025-06-09 13:14:46.0050	{start_date: 11:54:11.9230, end_date: None, logger_type: BinaryFile, events_num: 155, most_recent_event:  None}

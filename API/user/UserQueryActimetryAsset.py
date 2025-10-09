@@ -161,7 +161,9 @@ class UserQueryActimetryAsset(UserQueryBase):
         if not self.test:
             filename = os.path.join(Globals.config_man.actimetry_service_config["files_directory"], asset_uuid)
         else:
-            filename = os.path.join(".", asset_uuid)
+            test_assets_path = "./files_test"
+            os.makedirs(test_assets_path, exist_ok=True)
+            filename = os.path.join(test_assets_path, asset_uuid)
 
         file_size = file.content_length
         if file_size == 0:

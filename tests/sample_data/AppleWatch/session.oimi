@@ -1,0 +1,25 @@
+{
+  "description" : "Created: 2025-06-09_11:54:11\nDevice: AppleWatch > P11W2\nosVersion: 8.8.1\nApplication Version: 3.3.0\nSession name: unnamed\nSettings name: unknown\nSettings: \t{\n\t  \"battery\" : {\n\t    \"check_interval\" : 1\n\t  },\n\t  \"tremor\" : {\n\t\n\t  },\n\t  \"location\" : {\n\t    \"beacons\" : {\n\t      \"namespace\" : \"01b00000000000002023\",\n\t      \"instanceIdThresholdForGPS\" : \"000000000000\",\n\t      \"monitor_all\" : true\n\t    },\n\t    \"coordinates\" : {\n\t      \"accuracy\" : -1,\n\t      \"max_active_interval\" : 30,\n\t      \"activity_type\" : 4,\n\t      \"mode\" : \"Ponctual\",\n\t      \"beacon_proximity_idle_time\" : 30,\n\t      \"period\" : 20,\n\t      \"accuracy_threshold\" : 5\n\t    }\n\t  },\n\t  \"pedometer\" : {\n\t\n\t  },\n\t  \"activity\" : {\n\t\n\t  },\n\t  \"heartrate\" : {\n\t    \"active_interval\" : 16,\n\t    \"discard_first\" : true,\n\t    \"sampling_interval\" : 5\n\t  },\n\t  \"healthkit\" : {\n\t    \"healthkitTypes\" : [\n\t      \"activeEnergyBurned\",\n\t      \"heartRate\",\n\t      \"restingHeartRate\",\n\t      \"walkingHeartRateAverage\",\n\t      \"stepCount\",\n\t      \"oxygenSaturation\",\n\t      \"vo2Max\",\n\t      \"heartRateVariability\",\n\t      \"bodyTemperature\",\n\t      \"basalEnergyBurned\",\n\t      \"respiratoryRate\",\n\t      \"appleExerciseTime\",\n\t      \"appleStandTime\",\n\t      \"appleMoveTime\",\n\t      \"appleWalkingSteadiness\",\n\t      \"walkingSpeed\",\n\t      \"walkingStepLength\"\n\t    ]\n\t  },\n\t  \"rawMagnetometer\" : {\n\t    \"frequency\" : 50\n\t  },\n\t  \"loggerType\" : \"BinaryFile\",\n\t  \"rawAccelerometer\" : {\n\t    \"frequency\" : 50\n\t  },\n\t  \"rawGyroscope\" : {\n\t    \"frequency\" : 50\n\t  },\n\t  \"calorie\" : {\n\t\n\t  },\n\t  \"dyskineticSymptoms\" : {\n\t\n\t  }\n\t}",
+  "files" : [
+    "watch_HealthKit.data",
+    "watch_RawAccelerometer.data",
+    "watch_Magnetometer.data",
+    "watch_Pedometer.data",
+    "watch_Beacons.data",
+    "watch_Calorie.data",
+    "watch_Tremor.data",
+    "watch_logs.txt",
+    "watch_DyskineticSymptoms.data",
+    "watch_Gyroscope.data",
+    "watch_Activity.data",
+    "watch_HeartRate.data",
+    "watch_Coordinates.data",
+    "watch_Battery.data"
+  ],
+  "deviceID" : "P11W2",
+  "appVersion" : "3.3.0",
+  "participant" : "P11W2>FullOn",
+  "version" : 1,
+  "logger_type" : "AppleWatch",
+  "timestamp" : "2025-06-09_11:54:11"
+}

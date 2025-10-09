@@ -79,22 +79,22 @@ class UserQueryActimetryDatabaseTest(BaseActimetryServiceAPITest):
     def test_get_endpoint_with_valid_parameters_with_results(self):
         with self.app_context():
             # Get session type
-            session_type_info: dict = self._get_actimetry_session_type(self.admin_user_token)
+            # session_type_info: dict = self._get_actimetry_session_type(self.admin_user_token)
 
             # Get participants from id_site = 1
             participants = self._get_participants(self.admin_user_token, id_site=1)
 
             for participant in participants:
                 # Create a session to link the database to
-                session = self._create_session(
-                    user_token=self.admin_user_token,
-                    id_session_type=session_type_info["id_session_type"],
-                    id_participant=participant["id_participant"],
-                )
-
-                self.assertIsNotNone(session)
-                self.assertIn("id_session", session)
-                self.assertGreater(session["id_session"], 0)
+                # session = self._create_session(
+                #     user_token=self.admin_user_token,
+                #     id_session_type=session_type_info["id_session_type"],
+                #     id_participant=participant["id_participant"],
+                # )
+                #
+                # self.assertIsNotNone(session)
+                # self.assertIn("id_session", session)
+                # self.assertGreater(session["id_session"], 0)
 
                 # Create a database linked to that session
                 database_info = {
@@ -104,7 +104,7 @@ class UserQueryActimetryDatabaseTest(BaseActimetryServiceAPITest):
                         "database_description": "This is a test database",
                         "database_type": 1,  # SQLite
                         "database_participant_uuid": participant["participant_uuid"],
-                        "id_session": session["id_session"],
+                        #"id_session": session["id_session"],
                         "database_parameters": '{"param1": "value1", "param2": "value2"}',
                     }
                 }
@@ -139,22 +139,22 @@ class UserQueryActimetryDatabaseTest(BaseActimetryServiceAPITest):
     def test_post_endpoint_with_valid_schema(self):
         with self.app_context():
             # Get session type
-            session_type_info: dict = self._get_actimetry_session_type(self.admin_user_token)
+            # session_type_info: dict = self._get_actimetry_session_type(self.admin_user_token)
 
             # Get participants from id_site = 1
             participants = self._get_participants(self.admin_user_token, id_site=1)
 
             for participant in participants:
                 # Create a session to link the database to
-                session = self._create_session(
-                    user_token=self.admin_user_token,
-                    id_session_type=session_type_info["id_session_type"],
-                    id_participant=participant["id_participant"],
-                )
-
-                self.assertIsNotNone(session)
-                self.assertIn("id_session", session)
-                self.assertGreater(session["id_session"], 0)
+                # session = self._create_session(
+                #     user_token=self.admin_user_token,
+                #     id_session_type=session_type_info["id_session_type"],
+                #     id_participant=participant["id_participant"],
+                # )
+                #
+                # self.assertIsNotNone(session)
+                # self.assertIn("id_session", session)
+                # self.assertGreater(session["id_session"], 0)
 
                 # Create a database linked to that session
                 database_info = {
@@ -164,7 +164,7 @@ class UserQueryActimetryDatabaseTest(BaseActimetryServiceAPITest):
                         "database_description": "This is a test database",
                         "database_type": 1,  # SQLite
                         "database_participant_uuid": participant["participant_uuid"],
-                        "id_session": session["id_session"],
+                        #"id_session": session["id_session"],
                         "database_parameters": '{"param1": "value1", "param2": "value2"}',
                     }
                 }
@@ -209,7 +209,7 @@ class UserQueryActimetryDatabaseTest(BaseActimetryServiceAPITest):
     def test_delete_endpoint_will_delete_created_database(self):
         with self.app_context():
             # Get session type
-            session_type_info: dict = self._get_actimetry_session_type(self.admin_user_token)
+            # session_type_info: dict = self._get_actimetry_session_type(self.admin_user_token)
 
             # Get participants from id_site = 1
             participants = self._get_participants(self.admin_user_token, id_site=1)
@@ -218,15 +218,15 @@ class UserQueryActimetryDatabaseTest(BaseActimetryServiceAPITest):
             participant = participants[0]
 
             # Create a session to link the database to
-            session = self._create_session(
-                user_token=self.admin_user_token,
-                id_session_type=session_type_info["id_session_type"],
-                id_participant=participant["id_participant"],
-            )
-
-            self.assertIsNotNone(session)
-            self.assertIn("id_session", session)
-            self.assertGreater(session["id_session"], 0)
+            # session = self._create_session(
+            #     user_token=self.admin_user_token,
+            #     id_session_type=session_type_info["id_session_type"],
+            #     id_participant=participant["id_participant"],
+            # )
+            #
+            # self.assertIsNotNone(session)
+            # self.assertIn("id_session", session)
+            # self.assertGreater(session["id_session"], 0)
 
             # Create a database linked to that session
             database_info = {
@@ -236,7 +236,7 @@ class UserQueryActimetryDatabaseTest(BaseActimetryServiceAPITest):
                     "database_description": "This is a test database",
                     "database_type": 1,  # SQLite
                     "database_participant_uuid": participant["participant_uuid"],
-                    "id_session": session["id_session"],
+                    # "id_session": session["id_session"],
                     "database_parameters": '{"param1": "value1", "param2": "value2"}',
                 }
             }

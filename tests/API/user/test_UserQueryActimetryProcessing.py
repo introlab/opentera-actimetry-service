@@ -105,7 +105,6 @@ class UserProcessingTest(BaseActimetryServiceAPITest):
             participant_uuid = response.json()[0]['participant_uuid']
 
             db = ActimetryDatabase()
-            db.id_session = 1
             db.database_uuid = str(uuid.uuid4())
             db.database_participant_uuid = participant_uuid
             db.database_name = 'test_database'

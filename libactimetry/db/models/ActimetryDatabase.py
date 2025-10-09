@@ -35,7 +35,7 @@ class ActimetryDatabase(BaseModel):
 
     __tablename__ = "t_actimetry_databases"
     id_database = Column(Integer, Sequence("id_database_sequence"), primary_key=True, autoincrement=True)
-    id_session = Column(Integer, nullable=False)
+    #id_session = Column(Integer, nullable=False)
     database_uuid = Column(String(36), nullable=False, unique=True)
     database_participant_uuid = Column(String(36), nullable=False)  # Participant to which the database is linked
     database_name = Column(String, nullable=False)

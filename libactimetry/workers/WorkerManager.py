@@ -2,14 +2,13 @@ import uuid
 import threading
 import sys
 import subprocess
-import pickle
 import datetime
 import json
 import os
 import base64
 
-import Globals as Globals
 from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, WorkerType, WorkerOwnerType, WorkerStatus
+from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
 
 
 class WorkerManager:
@@ -18,8 +17,6 @@ class WorkerManager:
         self.flask_app = app.flask_app
 
     def worker_log_stdout(self, worker_uuid: uuid.UUID, text: str):
-        print("**** worker_log_stdout - thread = " + threading.current_thread().name)
-
         with self.flask_app.app_context():
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
             if worker_log:
@@ -54,8 +51,6 @@ class WorkerManager:
 
     def start_processing_worker(self, script: str, datapath: str, params: dict, owner_uuid: str,
                                 owner_type: WorkerOwnerType, database_id: int) -> (uuid.UUID, WorkerStatus):
-        print("**** start_processing_worker - thread = " + threading.current_thread().name)
-
         # Create a job UUID
         job_uuid = str(uuid.uuid4())
 
@@ -68,9 +63,6 @@ class WorkerManager:
         worker_log.worker_type = WorkerType.TYPE_ALGORITHM.value
         worker_log.worker_id_database = database_id
         ActimetryWorkerLog.insert(worker_log)
-
-        # Set worker parameters in redis with expiration
-        # Globals.redis_client.redisSet(job_id, json.dumps(params), ex=60)
 
         # Launch subprocess
         # TODO Validate if script exists
@@ -86,9 +78,43 @@ class WorkerManager:
 
         return job_uuid, WorkerStatus.STATUS_RUNNING
 
+    def start_openimu_importer_worker(self, participant_uuid: str, base_assets_path: str, id_session: int, owner_uuid: str,
+                                      owner_type: WorkerOwnerType) -> (uuid.UUID, WorkerStatus):
+        # Create a job UUID
+        job_uuid = str(uuid.uuid4())
+
+        # Check if database exists for participant
+        database = ActimetryDatabase.get_for_participant(participant_uuid)
+        if not database:
+            return job_uuid, WorkerStatus.STATUS_ABORTED
+
+        # Create worker log entry
+        params = {'participant': participant_uuid, 'id_session': id_session}
+        worker_log = ActimetryWorkerLog()
+        worker_log.worker_uuid = job_uuid
+        worker_log.worker_owner_uuid = owner_uuid
+        worker_log.worker_owner_type = owner_type.value
+        worker_log.worker_parameters = json.dumps(params)
+        worker_log.worker_type = WorkerType.TYPE_IMPORTER
+        worker_log.worker_id_database = database.id_database
+        ActimetryWorkerLog.insert(worker_log)
+
+        # Launch subprocess
+        command = [sys.executable, os.path.abspath('libactimetry' + os.sep + 'workers/OpenIMUImporterWorker.py'),
+                   '--job_id', job_uuid, '--base_assets_path', base_assets_path,
+                   '--params', base64.b64encode(json.dumps(params).encode('utf-8'))]
+
+        # Launch process, will be monitored by a thread
+        process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self._processes[job_uuid] = process
+
+        thread = threading.Thread(target=self.process_monitor_thread, args=(process, job_uuid))
+        thread.start()
+
+        return job_uuid, WorkerStatus.STATUS_RUNNING
+
     # Monitor process termination with callback
     def process_monitor_thread(self, monitored_processed: subprocess.Popen, worker_uuid: uuid.UUID):
-        print("**** process_monitor_thread - thread = " + threading.current_thread().name)
         self.worker_update_status(worker_uuid, WorkerStatus.STATUS_RUNNING)
         while monitored_processed.poll() is None:
             output, error = monitored_processed.communicate()

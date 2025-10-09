@@ -2,13 +2,11 @@ import os
 import json
 from datetime import datetime
 from flask_babel import gettext
-from flask_restx import Resource, inputs
 from flask import request
 from FlaskModule import user_api_ns as api
 from json import JSONDecodeError
-from jsonschema import validate, ValidationError
+from jsonschema import ValidationError
 from jsonschema.exceptions import SchemaError
-from sqlalchemy.exc import InvalidRequestError
 from sqlalchemy import exc
 from opentera.services.ServiceAccessManager import (
     ServiceAccessManager,
@@ -17,8 +15,6 @@ from opentera.services.ServiceAccessManager import (
     LoginType,
 )
 from werkzeug.exceptions import BadRequest
-from opentera.modules.BaseModule import BaseModule
-from libopenimu.algorithms.BaseAlgorithm import BaseAlgorithmFactory
 from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase, ActimetryDatabaseType
 from API.user.UserQueryBase import UserQueryBase
 import Globals as Globals
@@ -79,16 +75,22 @@ class UserQueryActimetryDatabase(UserQueryBase):
                 database = ActimetryDatabase.get_by_id(args["id_database"])
                 if not database:
                     return gettext("No database found"), 404
-                if not self._verify_session_access(database.id_session):
-                    return gettext("Access denied to that database"), 403
+                # if not self._verify_session_access(database.id_session):
+                #     return gettext("Access denied to that database"), 403
+                participant_info = self._get_participant_info(database.database_participant_uuid)
+                if not participant_info:
+                    return gettext("No access to participant"), 403
                 return database.to_json(), 200
             # if database_uuid is provided, return that database
             elif args["database_uuid"] is not None:
                 database = ActimetryDatabase.get_by_uuid(args["database_uuid"])
                 if not database:
                     return gettext("No database found"), 404
-                if not self._verify_session_access(database.id_session):
-                    return gettext("Access denied to that database"), 403
+                # if not self._verify_session_access(database.id_session):
+                #     return gettext("Access denied to that database"), 403
+                participant_info = self._get_participant_info(database.database_participant_uuid)
+                if not participant_info:
+                    return gettext("No access to participant"), 403
                 return database.to_json(), 200
             # if database_participant_uuid is provided, return the database for the participant
             elif args["database_participant_uuid"] is not None:
@@ -125,10 +127,10 @@ class UserQueryActimetryDatabase(UserQueryBase):
 
             # Validate access to session first
             database_info = request.json["database"]
-            if "id_session" not in database_info:
-                return gettext("Missing session ID"), 400
-            if not self._verify_session_access(database_info["id_session"]):
-                return gettext("Access denied to that session"), 403
+            # if "id_session" not in database_info:
+            #     return gettext("Missing session ID"), 400
+            # if not self._verify_session_access(database_info["id_session"]):
+            #     return gettext("Access denied to that session"), 403
 
             # Validate access to participant
             if "database_participant_uuid" not in database_info:
@@ -142,7 +144,7 @@ class UserQueryActimetryDatabase(UserQueryBase):
             if database_info["id_database"] == 0:
                 # Create new database
                 new_database = ActimetryDatabase()
-                new_database.id_session = database_info["id_session"]
+                #new_database.id_session = database_info["id_session"]
                 new_database.database_participant_uuid = database_info["database_participant_uuid"]
                 new_database.database_name = database_info["database_name"]
                 # Force OpenIMU type for now
@@ -154,6 +156,8 @@ class UserQueryActimetryDatabase(UserQueryBase):
                 filename = os.path.join(
                     Globals.config_man.actimetry_service_config["databases_directory"], new_database.database_uuid
                 )
+                os.makedirs(os.path.dirname(Globals.config_man.actimetry_service_config["databases_directory"]),
+                            exist_ok=True)
 
                 # OpenIMU database creation
                 if new_database.database_type == ActimetryDatabaseType.DATABASETYPE_OPENIMU.value:
@@ -177,6 +181,7 @@ class UserQueryActimetryDatabase(UserQueryBase):
 
                     # Commit to DB
                     manager.session.commit()
+                    manager.close()
 
                 else:
                     return gettext("Unsupported database type"), 400
@@ -187,8 +192,8 @@ class UserQueryActimetryDatabase(UserQueryBase):
                 database = ActimetryDatabase.get_by_id(database_info["id_database"])
                 if not database:
                     return gettext("No database found"), 404
-                if not self._verify_session_access(database.id_session):
-                    return gettext("Access denied to that database"), 403
+                # if not self._verify_session_access(database.id_session):
+                #     return gettext("Access denied to that database"), 403
 
                 # Update fields, allowing only name and parameters to be updated
                 database.database_name = database_info.get("database_name", database.database_name)
@@ -239,8 +244,8 @@ class UserQueryActimetryDatabase(UserQueryBase):
             database = ActimetryDatabase.get_by_id(args["id_database"])
             if not database:
                 return gettext("No database found"), 404
-            if not self._verify_session_access(database.id_session):
-                return gettext("Access denied to that database"), 403
+            # if not self._verify_session_access(database.id_session):
+            #     return gettext("Access denied to that database"), 403
 
             # Delete database file and entry
             database_folder = Globals.config_man.actimetry_service_config["databases_directory"]
