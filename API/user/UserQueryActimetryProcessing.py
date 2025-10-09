@@ -63,14 +63,15 @@ class UserQueryActimetryProcessing(UserQueryBase):
             return gettext("Forbidden access to that worker"), 403
 
         # Check if current user can access the status of that log
-        # TODO Allow access to accessible participants logs
-        # TODO Allow access to accessible device logs
-        # TODO Allow access to accessible service logs
-        if (
-            log.worker_owner_type != WorkerOwnerType.OWNER_USER.value
-            or log.worker_owner_uuid != current_user_client.user_uuid
-        ):
-            return gettext("Forbidden access to that worker"), 403
+        if not current_user_client.user_superadmin:
+            # TODO Allow access to accessible participants logs
+            # TODO Allow access to accessible device logs
+            # TODO Allow access to accessible service logs
+            if (
+                log.worker_owner_type != WorkerOwnerType.OWNER_USER.value
+                or log.worker_owner_uuid != current_user_client.user_uuid
+            ):
+                return gettext("Forbidden access to that worker"), 403
 
         # All good ! Return status
         return log.to_json(), 200

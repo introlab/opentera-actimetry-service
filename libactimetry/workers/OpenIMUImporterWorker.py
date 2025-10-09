@@ -9,7 +9,6 @@ class OpenIMUImporterWorker(BaseWorker):
     def init(self):
         print("OpenIMUImporterWorker: init")
         BaseWorker.init(self)
-        print("*** Params: " + self._params)
 
     def run(self):
         print("OpenIMUImporterWorker: run")

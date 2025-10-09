@@ -14,7 +14,10 @@ from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
 class WorkerManager:
     def __init__(self, app):
         self._processes = {}
-        self.flask_app = app.flask_app
+        if hasattr(app, 'flask_app'):
+            self.flask_app = app.flask_app
+        else:
+            self.flask_app = app
 
     def worker_log_stdout(self, worker_uuid: uuid.UUID, text: str):
         with self.flask_app.app_context():
@@ -95,14 +98,13 @@ class WorkerManager:
         worker_log.worker_owner_uuid = owner_uuid
         worker_log.worker_owner_type = owner_type.value
         worker_log.worker_parameters = json.dumps(params)
-        worker_log.worker_type = WorkerType.TYPE_IMPORTER
+        worker_log.worker_type = WorkerType.TYPE_IMPORTER.value
         worker_log.worker_id_database = database.id_database
         ActimetryWorkerLog.insert(worker_log)
 
         # Launch subprocess
         command = [sys.executable, os.path.abspath('libactimetry' + os.sep + 'workers/OpenIMUImporterWorker.py'),
-                   '--job_id', job_uuid, '--base_assets_path', base_assets_path,
-                   '--params', base64.b64encode(json.dumps(params).encode('utf-8'))]
+                   '--job_id', job_uuid, '--params', base64.b64encode(json.dumps(params).encode('utf-8'))]
 
         # Launch process, will be monitored by a thread
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

@@ -1,8 +1,10 @@
 import os
 import json
+import time
+import shutil
 from tests.API.BaseActimetryServiceAPITest import BaseActimetryServiceAPITest
 from libactimetry.workers.WorkerManager import WorkerManager
-from libactimetry.db.models.ActimetryWorkerLog import WorkerOwnerType
+from libactimetry.db.models.ActimetryWorkerLog import WorkerOwnerType, ActimetryWorkerLog, WorkerStatus
 
 
 class UserAssetFileTest(BaseActimetryServiceAPITest):
@@ -89,11 +91,31 @@ class UserAssetFileTest(BaseActimetryServiceAPITest):
 
             # Import into database file
             worker_man = WorkerManager(self._service.flask_app)
-            worker_man.start_openimu_importer_worker(participant_uuid=participant_uuid, base_assets_path='./files_test',
-                                                     id_session=session['id_session'],
-                                                     owner_uuid=self._service.service_uuid,
-                                                     owner_type=WorkerOwnerType.OWNER_SERVICE)
+            (work_uuid, status) = worker_man.start_openimu_importer_worker(participant_uuid=participant_uuid,
+                                                                      base_assets_path='./files_test',
+                                                                      id_session=session['id_session'],
+                                                                      owner_uuid=self._service.service_uuid,
+                                                                      owner_type=WorkerOwnerType.OWNER_SERVICE)
+
+            wait_time = 10  # Wait at most for 10 seconds
+            while wait_time > 0:
+                time.sleep(1)
+                # Query process state to see if it is still running or not
+                response = self._get_with_token_auth(self.test_client, token=self.admin_user_token,
+                                                     params={'uuid': work_uuid},
+                                                     endpoint='/api/user/processing')
+                self.assertEqual(response.status_code, 200)
+                self.assertTrue("worker_status" in response.json)
+                if response.json["worker_status"] != WorkerStatus.STATUS_RUNNING.value:
+                    log = ActimetryWorkerLog.get_log_for_worker(work_uuid)
+                    self.assertTrue(log.to_json() == response.json)
+                    self.assertEqual(response.json["worker_status"], WorkerStatus.STATUS_COMPLETED.value)
+                    break
+
+                wait_time -= 1
+
+            self.assertTrue(wait_time > 0)
 
             # Delete assets files
-            os.removedirs('./files_test')
+            shutil.rmtree('./files_test')
 
