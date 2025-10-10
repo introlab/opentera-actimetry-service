@@ -2,6 +2,7 @@ import abc
 import argparse
 import json
 import base64
+import sys
 
 from abc import ABC
 
@@ -14,7 +15,7 @@ class BaseWorker(ABC):
         self._job_id = None
 
     def init(self):
-        print("TestWorker: init")
+        # print("TestWorker: init")
         parser = argparse.ArgumentParser(description="Actimetry Worker")
         parser.add_argument("--datapath", help="Datapath to process data")
         parser.add_argument("--job_id", help="Job UUID")
@@ -24,8 +25,12 @@ class BaseWorker(ABC):
         self._job_id = args.job_id
         self._datapath = args.datapath
         self._params = json.loads(base64.b64decode(args.params))
-        print(args)
+        # print(args)
 
     @abc.abstractmethod
     def run(self):
         pass
+
+    @staticmethod
+    def print_err(message):
+        sys.stderr.write(message)

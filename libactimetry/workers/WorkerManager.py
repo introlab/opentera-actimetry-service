@@ -6,9 +6,11 @@ import datetime
 import json
 import os
 import base64
+import Globals as Globals
 
 from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, WorkerType, WorkerOwnerType, WorkerStatus
 from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
+from libactimetry.db.models.ActimetryAsset import ActimetryAsset
 
 
 class WorkerManager:
@@ -21,6 +23,7 @@ class WorkerManager:
 
     def worker_log_stdout(self, worker_uuid: uuid.UUID, text: str):
         with self.flask_app.app_context():
+            print(text)
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
             if worker_log:
                 worker_log.worker_logs += text
@@ -28,6 +31,7 @@ class WorkerManager:
 
     def worker_log_stderr(self, worker_uuid: uuid.UUID, text: str):
         with self.flask_app.app_context():
+            print(text)
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
             if worker_log:
                 worker_log.worker_errors += text
@@ -81,18 +85,27 @@ class WorkerManager:
 
         return job_uuid, WorkerStatus.STATUS_RUNNING
 
-    def start_openimu_importer_worker(self, participant_uuid: str, base_assets_path: str, id_session: int, owner_uuid: str,
+    def start_openimu_importer_worker(self, participant_uuid: str, participant_name: str,
+                                      base_assets_path: str, id_collection: int, owner_uuid: str,
                                       owner_type: WorkerOwnerType) -> (uuid.UUID, WorkerStatus):
-        # Create a job UUID
-        job_uuid = str(uuid.uuid4())
 
         # Check if database exists for participant
         database = ActimetryDatabase.get_for_participant(participant_uuid)
         if not database:
-            return job_uuid, WorkerStatus.STATUS_ABORTED
+            return uuid.UUID(int=0), WorkerStatus.STATUS_ABORTED
+
+        # Prepare assets mapping
+        assets = ActimetryAsset.get_assets_for_collection(collection_id=id_collection)
+        if not assets:
+            return uuid.UUID(int=0), WorkerStatus.STATUS_ABORTED
+
+        assets_list = [{'filename': asset.asset_original_filename, 'uuid': asset.asset_uuid} for asset in assets]
+
+        # Create a job UUID
+        job_uuid = str(uuid.uuid4())
 
         # Create worker log entry
-        params = {'participant': participant_uuid, 'id_session': id_session}
+        params = {'participant': participant_uuid, 'id_collection': id_collection}
         worker_log = ActimetryWorkerLog()
         worker_log.worker_uuid = job_uuid
         worker_log.worker_owner_uuid = owner_uuid
@@ -102,6 +115,9 @@ class WorkerManager:
         worker_log.worker_id_database = database.id_database
         ActimetryWorkerLog.insert(worker_log)
 
+        params = {'base_assets_path': base_assets_path,
+                  'database_path': Globals.config_man.actimetry_service_config["databases_directory"],
+                  'assets': assets_list, 'database': database.database_uuid, 'participant': participant_name}
         # Launch subprocess
         command = [sys.executable, os.path.abspath('libactimetry' + os.sep + 'workers/OpenIMUImporterWorker.py'),
                    '--job_id', job_uuid, '--params', base64.b64encode(json.dumps(params).encode('utf-8'))]

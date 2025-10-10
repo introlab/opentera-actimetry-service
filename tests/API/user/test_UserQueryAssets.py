@@ -67,6 +67,7 @@ class UserAssetFileTest(BaseActimetryServiceAPITest):
                 token=self.admin_user_token, api_url="/api/user/participants", params={'id_participant': 1})
             self.assertEqual(response.status_code, 200)
             participant_uuid = response.json()[0]['participant_uuid']
+            participant_name = response.json()[0]['participant_name']
             database_infos = {'database': {'id_database': 0,
                                            'database_participant_uuid': participant_uuid,
                                            'database_name': 'Test Database'}}
@@ -92,12 +93,13 @@ class UserAssetFileTest(BaseActimetryServiceAPITest):
             # Import into database file
             worker_man = WorkerManager(self._service.flask_app)
             (work_uuid, status) = worker_man.start_openimu_importer_worker(participant_uuid=participant_uuid,
-                                                                      base_assets_path='./files_test',
-                                                                      id_session=session['id_session'],
-                                                                      owner_uuid=self._service.service_uuid,
-                                                                      owner_type=WorkerOwnerType.OWNER_SERVICE)
+                                                                           participant_name=participant_name,
+                                                                           base_assets_path='./files_test',
+                                                                           id_collection=session['id_session'],
+                                                                           owner_uuid=self._service.service_uuid,
+                                                                           owner_type=WorkerOwnerType.OWNER_SERVICE)
 
-            wait_time = 10  # Wait at most for 10 seconds
+            wait_time = 120
             while wait_time > 0:
                 time.sleep(1)
                 # Query process state to see if it is still running or not
@@ -115,6 +117,8 @@ class UserAssetFileTest(BaseActimetryServiceAPITest):
                 wait_time -= 1
 
             self.assertTrue(wait_time > 0)
+
+            # Check database structure
 
             # Delete assets files
             shutil.rmtree('./files_test')

@@ -32,6 +32,10 @@ class ActimetryAsset(BaseModel):
     def get_assets_for_uuids(uuids_asset: list):
         return ActimetryAsset.query.filter(ActimetryAsset.asset_uuid.in_(uuids_asset)).all()
 
+    @staticmethod
+    def get_assets_for_collection(collection_id: int):
+        return ActimetryAsset.query.filter(ActimetryAsset.id_collection == collection_id).all()
+
     # Delete this asset. file_folder is required to delete the file too.
     def delete_actimetry_asset(self, file_folder: str) -> bool:
         # Delete related file from system
