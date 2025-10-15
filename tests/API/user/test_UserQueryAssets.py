@@ -119,6 +119,7 @@ class UserAssetFileTest(BaseActimetryServiceAPITest):
             self.assertTrue(wait_time > 0)
 
             # Check database structure
+            #TODO
 
             # Delete assets files
             shutil.rmtree('./files_test')

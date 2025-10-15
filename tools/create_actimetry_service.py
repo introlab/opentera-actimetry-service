@@ -3,7 +3,6 @@ import subprocess
 import sys
 import requests
 from requests.auth import _basic_auth_str
-from opentera.db.models.TeraSessionType import TeraSessionType
 import argparse
 
 required_roles = []
@@ -37,8 +36,8 @@ def create_session_type_for_actimetry(server_url: str, headers: str, service_inf
             }
         }
 
-        response = requests.post(url=server_url + '/api/user/sessiontypes',
-                                headers=headers, json=json_data, verify=False, timeout=5)
+        response = requests.post(url=server_url + '/api/user/sessiontypes', headers=headers, json=json_data,
+                                 verify=False, timeout=5)
         if response.status_code != 200:
             return False
 

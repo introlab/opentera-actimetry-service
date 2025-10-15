@@ -36,6 +36,10 @@ class ActimetryAsset(BaseModel):
     def get_assets_for_collection(collection_id: int):
         return ActimetryAsset.query.filter(ActimetryAsset.id_collection == collection_id).all()
 
+    @staticmethod
+    def collection_has_assets(collection_id: int) -> bool:
+        return ActimetryAsset.query.filter(ActimetryAsset.id_collection == collection_id).first() is not None
+
     # Delete this asset. file_folder is required to delete the file too.
     def delete_actimetry_asset(self, file_folder: str) -> bool:
         # Delete related file from system

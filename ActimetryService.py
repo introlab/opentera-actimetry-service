@@ -13,6 +13,9 @@ from twisted.python import log
 from opentera.redis.RedisClient import RedisClient
 from opentera.redis.RedisVars import RedisVars
 from opentera.services.ServiceOpenTeraWithAssets import ServiceOpenTeraWithAssets
+from opentera.modules.BaseModule import ModuleNames, create_module_event_topic_from_name
+from opentera.db.models.TeraSession import TeraSessionStatus
+
 import opentera.messages.python as messages
 
 
@@ -21,7 +24,10 @@ from FlaskModule import FlaskModule, flask_app
 import Globals
 from ConfigManager import ConfigManager
 from libactimetry.db.DBManager import DBManager
+from libactimetry.db.models.ActimetryAsset import ActimetryAsset
+from libactimetry.db.models.ActimetryWorkerLog import WorkerOwnerType
 from libactimetry.workers.WorkerManager import WorkerManager
+
 
 
 class ActimetryService(ServiceOpenTeraWithAssets):
@@ -98,6 +104,53 @@ class ActimetryService(ServiceOpenTeraWithAssets):
 
     def notify_service_messages(self, pattern, channel, message):
         print("ActimetryService - notify_service_message", pattern, channel, message)
+
+    @defer.inlineCallbacks
+    def register_to_events(self):
+        print('ActimetryService - Registering to events...')
+        # Always register to assets events
+        yield self.subscribe_pattern_with_callback(create_module_event_topic_from_name(
+            ModuleNames.DATABASE_MODULE_NAME, 'session'), self.database_event_received)
+
+        # Need to register to events (base class)
+        super().register_to_events()
+
+    def handle_database_event(self, event: messages.DatabaseEvent):
+        super().handle_database_event(event)
+        if event.object_type == 'session':
+            if event.type == messages.DatabaseEvent.DB_UPDATE:
+                # Session update
+                session_info = json.loads(event.object_value)
+                if session_info['session_status'] == TeraSessionStatus.STATUS_COMPLETED.value:
+                    # Check if we have assets for that session
+                    if not ActimetryAsset.collection_has_assets(session_info['id_session']):
+                        return  # No assets for that session, so nothing to do!
+                    # Process session only if status is completed
+                    # Query participants for that session
+                    response = self.get_from_opentera('/api/service/sessions',
+                                                      {'id_session': session_info['id_session'],
+                                                       'with_session_typo': True})
+                    if response.status_code == 200:
+                        session_details = response.json()
+                        if len(session_details) > 0:
+                            session_details = session_details[0]
+                        if session_details:
+                            if session_details['session_participants']:
+                                # We have a least one participant in the session, start the import process
+                                participant_info = session_details['session_participants'][0] # Use only the first one
+                                Globals.worker_man.start_openimu_importer_worker(
+                                    participant_uuid=participant_info['participant_uuid'],
+                                    participant_name=participant_info['participant_name'],
+                                    base_assets_path=self.config_man.actimetry_service_config['files_directory'],
+                                    id_collection=session_info['id_session'], owner_uuid=self.service_uuid,
+                                    owner_type=WorkerOwnerType.OWNER_SERVICE
+                                )
+
+
+
+
+
+
 
     def asset_event_received(self, event: messages.DatabaseEvent):
         if event.object_type == "asset":
