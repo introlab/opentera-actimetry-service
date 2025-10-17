@@ -1,6 +1,4 @@
 import os
-import json
-from datetime import datetime
 from flask_babel import gettext
 from flask import request
 from FlaskModule import user_api_ns as api
@@ -18,9 +16,6 @@ from werkzeug.exceptions import BadRequest
 from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase, ActimetryDatabaseType
 from API.user.UserQueryBase import UserQueryBase
 import Globals as Globals
-from libopenimu.db.DBManager import DBManager as OpenIMUDBManager
-from libopenimu.models.Participant import Participant as OpenIMUParticipant
-from libopenimu.models.DataSet import DataSet as OpenIMUDataSet
 
 # Parser definition(s)
 get_parser = api.parser()
@@ -161,28 +156,7 @@ class UserQueryActimetryDatabase(UserQueryBase):
 
                 # OpenIMU database creation
                 if new_database.database_type == ActimetryDatabaseType.DATABASETYPE_OPENIMU.value:
-                    manager: OpenIMUDBManager = OpenIMUDBManager(filename, overwrite=False, echo=False, newfile=True)
-                    # Create participant
-                    participant = OpenIMUParticipant()
-                    participant.name = participant_info["participant_name"]
-                    participant.description = json.dumps(participant_info)
-                    manager.session.add(participant)
-
-                    # Create dataset
-                    dataset = OpenIMUDataSet()
-                    dataset.name = "Main dataset"
-                    dataset.description = (
-                        f"Dataset for participant {participant.name} [{participant_info['participant_uuid']}]"
-                    )
-                    dataset.author = "Actimetry Service"
-                    dataset.creation_date = datetime.now()
-                    dataset.upload_date = datetime.now()
-                    manager.session.add(dataset)
-
-                    # Commit to DB
-                    manager.session.commit()
-                    manager.close()
-
+                    ActimetryDatabase.create_openimu_database_file(filename, participant_info)
                 else:
                     return gettext("Unsupported database type"), 400
 

@@ -8,6 +8,8 @@ import os
 import base64
 import Globals as Globals
 
+from sqlalchemy.orm import sessionmaker, scoped_session
+
 from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, WorkerType, WorkerOwnerType, WorkerStatus
 from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
 from libactimetry.db.models.ActimetryAsset import ActimetryAsset
@@ -23,7 +25,7 @@ class WorkerManager:
 
     def worker_log_stdout(self, worker_uuid: uuid.UUID, text: str):
         with self.flask_app.app_context():
-            print(text)
+            print(str(worker_uuid) + ' - ' + text)
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
             if worker_log:
                 worker_log.worker_logs += text
@@ -31,7 +33,7 @@ class WorkerManager:
 
     def worker_log_stderr(self, worker_uuid: uuid.UUID, text: str):
         with self.flask_app.app_context():
-            print(text)
+            print(str(worker_uuid) + ' - ERROR ' + text)
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
             if worker_log:
                 worker_log.worker_errors += text
@@ -92,6 +94,7 @@ class WorkerManager:
         # Check if database exists for participant
         database = ActimetryDatabase.get_for_participant(participant_uuid)
         if not database:
+            print("No database for that participant - aborting import process")
             return uuid.UUID(int=0), WorkerStatus.STATUS_ABORTED
 
         # Prepare assets mapping

@@ -26,6 +26,7 @@ from ConfigManager import ConfigManager
 from libactimetry.db.DBManager import DBManager
 from libactimetry.db.models.ActimetryAsset import ActimetryAsset
 from libactimetry.db.models.ActimetryWorkerLog import WorkerOwnerType
+from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase, ActimetryDatabaseType
 from libactimetry.workers.WorkerManager import WorkerManager
 
 
@@ -138,6 +139,31 @@ class ActimetryService(ServiceOpenTeraWithAssets):
                             if session_details['session_participants']:
                                 # We have a least one participant in the session, start the import process
                                 participant_info = session_details['session_participants'][0] # Use only the first one
+
+                                # Check if we need to create a new empty database or not
+                                database = ActimetryDatabase.get_for_participant(participant_info['participant_uuid'])
+                                if not database:
+                                    # Create new database
+                                    database = ActimetryDatabase()
+                                    # new_database.id_session = database_info["id_session"]
+                                    database.database_participant_uuid = participant_info['participant_uuid']
+                                    database.database_name = "OpenIMU - " + participant_info['participant_name']
+                                    # Force OpenIMU type for now
+                                    database.database_type = ActimetryDatabaseType.DATABASETYPE_OPENIMU.value
+                                    database.database_parameters = None
+                                    ActimetryDatabase.insert(database)
+
+                                    # Create database file
+                                    filename = os.path.join(
+                                        self.config_man.actimetry_service_config["databases_directory"],
+                                        database.database_uuid
+                                    )
+                                    os.makedirs(os.path.dirname(
+                                        Globals.config_man.actimetry_service_config["databases_directory"]),
+                                                exist_ok=True)
+
+                                    ActimetryDatabase.create_openimu_database_file(filename, participant_info)
+
                                 Globals.worker_man.start_openimu_importer_worker(
                                     participant_uuid=participant_info['participant_uuid'],
                                     participant_name=participant_info['participant_name'],
@@ -145,12 +171,6 @@ class ActimetryService(ServiceOpenTeraWithAssets):
                                     id_collection=session_info['id_session'], owner_uuid=self.service_uuid,
                                     owner_type=WorkerOwnerType.OWNER_SERVICE
                                 )
-
-
-
-
-
-
 
     def asset_event_received(self, event: messages.DatabaseEvent):
         if event.object_type == "asset":
@@ -164,7 +184,7 @@ if __name__ == "__main__":
     log.startLogging(sys.stdout)
 
     parser = argparse.ArgumentParser(description="Actimetry Service")
-    parser.add_argument("--enable_tests", help="Test mode for service.", default=True)
+    parser.add_argument("--enable_tests", help="Test mode for service.", default=False)
     parser.add_argument("--conf", help="Configuration file", default="ActimetryService.json")
     args = parser.parse_args()
 

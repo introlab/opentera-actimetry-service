@@ -3,8 +3,9 @@ import os
 import shutil
 
 from libactimetry.workers.BaseWorker import BaseWorker
-from libopenimu.db.DBManager import DBManager as OpenIMUDBManager
+
 from libopenimu.importers.AppleWatchImporter import AppleWatchImporter
+from libopenimu.models.DataSource import DataSource as OpenIMUDataSource
 
 
 class OpenIMUImporterWorker(BaseWorker):
@@ -18,6 +19,7 @@ class OpenIMUImporterWorker(BaseWorker):
         # print(json.dumps(self._params))
 
     def run(self):
+        from libopenimu.db.DBManager import DBManager as OpenIMUDBManager
         print("OpenIMUImporterWorker: run")
         # Open OpenIMU database
         filename = os.path.join(self._params['database_path'], self._params['database'])
@@ -38,19 +40,44 @@ class OpenIMUImporterWorker(BaseWorker):
 
         # Create temporary files to import
         with tempfile.TemporaryDirectory() as tmpdir:
+            importer = AppleWatchImporter(db_manager, target_participant)
             for asset in self._params['assets']:
                 src_file = str(os.path.join(self._params['base_assets_path'], asset['uuid']))
+                file_md5 = OpenIMUDataSource.compute_md5(src_file).hexdigest()
+                if OpenIMUDataSource.datasource_exists_for_participant(asset['uuid'], target_participant, file_md5,
+                                                                       importer.db.session):
+                    print("-> Ignoring " + asset['uuid'] + " - Already imported.")
+                    continue
+
                 dest_file = str(os.path.join(tmpdir, asset['filename']))
                 shutil.copy(src_file, dest_file)
 
-            # Import files
-            importer = AppleWatchImporter(db_manager, target_participant)
-            for filename in os.listdir(tmpdir):
-                full_filename = os.path.join(tmpdir, filename)
-                print("-> Loading: " + full_filename)
-                results = importer.load(full_filename)
-                print('-> Importing...')
-                importer.import_to_database(results)
+                # Import files
+                if ".data" in dest_file:
+                    print("-> Loading: " + dest_file)
+                    results = importer.load(dest_file)
+                    print('-> Importing...')
+                    importer.import_to_database(results)
+
+                    # Add datasources for that file
+                    for recordset in importer.recordsets:
+                        if not OpenIMUDataSource.datasource_exists_for_recordset(
+                                filename=asset['uuid'],
+                                recordset=recordset,
+                                md5=file_md5,
+                                db_session=importer.db.session,
+                        ):
+                            ds = OpenIMUDataSource()
+                            ds.recordset = recordset
+                            ds.file_md5 = file_md5
+                            ds.file_name = asset['uuid']
+                            ds.update_datasource(
+                                db_session=importer.db.session
+                            )
+
+                    importer.clear_recordsets()
+        print("** OpenIMU import completed.")
+
 
 
 if __name__ == '__main__':

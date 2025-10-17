@@ -1,18 +1,21 @@
 import uuid
 import os
+import json
+from datetime import datetime
+
 from libactimetry.db.models.BaseModel import BaseModel
+
+
 from sqlalchemy import (
     Column,
     Integer,
     String,
-    ForeignKey,
     Sequence,
     TIMESTAMP,
     func,
     exc,
     JSON,
 )
-from sqlalchemy.orm import relationship
 
 from enum import Enum
 
@@ -58,6 +61,33 @@ class ActimetryDatabase(BaseModel):
     @staticmethod
     def get_by_id(id_database: int) -> "ActimetryDatabase | None":
         return ActimetryDatabase.query.filter_by(id_database=id_database).first()
+
+    @staticmethod
+    def create_openimu_database_file(filename: str, participant_info: dict):
+        from libopenimu.db.DBManager import DBManager as OpenIMUDBManager
+        from libopenimu.models.Participant import Participant as OpenIMUParticipant
+        from libopenimu.models.DataSet import DataSet as OpenIMUDataSet
+        manager: OpenIMUDBManager = OpenIMUDBManager(filename, overwrite=False, echo=False, newfile=True)
+        # Create participant
+        participant = OpenIMUParticipant()
+        participant.name = participant_info["participant_name"]
+        participant.description = json.dumps(participant_info)
+        manager.session.add(participant)
+
+        # Create dataset
+        dataset = OpenIMUDataSet()
+        dataset.name = "Main dataset"
+        dataset.description = (
+            f"Dataset for participant {participant.name} [{participant_info['participant_uuid']}]"
+        )
+        dataset.author = "Actimetry Service"
+        dataset.creation_date = datetime.now()
+        dataset.upload_date = datetime.now()
+        manager.session.add(dataset)
+
+        # Commit to DB
+        manager.session.commit()
+        manager.close()
 
     @classmethod
     def insert(cls, database: "ActimetryDatabase"):
