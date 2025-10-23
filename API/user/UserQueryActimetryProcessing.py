@@ -1,6 +1,5 @@
 from flask import request
 from flask_babel import gettext
-from flask_restx import Resource
 from FlaskModule import user_api_ns as api
 from opentera.services.ServiceAccessManager import (
     ServiceAccessManager,
@@ -10,6 +9,8 @@ from opentera.services.ServiceAccessManager import (
 )
 from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, WorkerOwnerType, WorkerStatus
 from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
+
+from libopenimu.algorithms.BaseAlgorithm import BaseAlgorithmFactory
 
 import Globals as Globals
 from API.user.UserQueryBase import UserQueryBase
@@ -93,8 +94,8 @@ class UserQueryActimetryProcessing(UserQueryBase):
         json_worker = request.json["worker"]
 
         # Validate key against known algorithms
-        # TODO Fetch list from libopenimu
-        known_algos = ["evenson2008", "freedson1998"]
+        known_algos = [factory.unique_key() for factory in BaseAlgorithmFactory.factories]
+        # known_algos = ["evenson2008", "freedson1998"]
         if self.test:
             known_algos.append('Test')
 
