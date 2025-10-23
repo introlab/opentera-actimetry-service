@@ -121,7 +121,7 @@ class UserQueryActimetryProcessing(UserQueryBase):
         database_path = (
             Globals.service.config_man.actimetry_service_config["databases_directory"] + os.sep + database.database_uuid
         )
-        (work_uuid, worker_status) = Globals.worker_man.start_processing_worker(
+        result = Globals.worker_man.start_processing_worker(
             script=script_name,
             datapath=database_path,
             owner_type=WorkerOwnerType.OWNER_USER,
@@ -130,4 +130,7 @@ class UserQueryActimetryProcessing(UserQueryBase):
             database_id=database.id_database,
         )
 
-        return {"work_uuid": work_uuid, "status": worker_status.value}, 200
+        if not result['success']:
+            return result['message'], 500
+
+        return {"work_uuid": result['worker_uuid'], "status": result['status'].value}, 200

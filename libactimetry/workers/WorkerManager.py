@@ -59,13 +59,22 @@ class WorkerManager:
                 worker_log.commit()
 
     def start_processing_worker(self, script: str, datapath: str, params: dict, owner_uuid: str,
-                                owner_type: WorkerOwnerType, database_id: int) -> (uuid.UUID, WorkerStatus):
+                                owner_type: WorkerOwnerType, database_id: int) -> dict:  # (uuid.UUID, WorkerStatus):
+        rval = {'success': False, 'message': "", 'worker_uuid': None, 'status': WorkerStatus.STATUS_PLANNED}
+
+        # Validate if path exists
+        script_path = os.path.abspath('libactimetry' + os.sep + script)
+        if not os.path.isfile(script_path):
+            rval['success'] = False
+            rval['message'] = 'Unable to find script ' + script
+            return rval
+
         # Create a job UUID
-        job_uuid = str(uuid.uuid4())
+        rval['worker_uuid'] = str(uuid.uuid4())
 
         # Create worker log entry
         worker_log = ActimetryWorkerLog()
-        worker_log.worker_uuid = job_uuid
+        worker_log.worker_uuid = rval['worker_uuid']
         worker_log.worker_owner_uuid = owner_uuid
         worker_log.worker_owner_type = owner_type.value
         worker_log.worker_parameters = json.dumps({'script': script, 'params': params})
@@ -75,17 +84,19 @@ class WorkerManager:
 
         # Launch subprocess
         # TODO Validate if script exists
-        command = [sys.executable, os.path.abspath('libactimetry' + os.sep + script), '--datapath', datapath,
-                   '--job_id', job_uuid, '--params', base64.b64encode(json.dumps(params).encode('utf-8'))]
+        command = [sys.executable, script_path, '--datapath', datapath,
+                   '--job_id', rval['worker_uuid'], '--params', base64.b64encode(json.dumps(params).encode('utf-8'))]
 
         # Launch process, will be monitored by a thread
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self._processes[job_uuid] = process
+        self._processes[rval['worker_uuid']] = process
 
-        thread = threading.Thread(target=self.process_monitor_thread, args=(process, job_uuid))
+        thread = threading.Thread(target=self.process_monitor_thread, args=(process, rval['worker_uuid']))
         thread.start()
 
-        return job_uuid, WorkerStatus.STATUS_RUNNING
+        rval['success'] = True
+        rval['status'] = WorkerStatus.STATUS_RUNNING
+        return rval
 
     def start_openimu_importer_worker(self, participant_uuid: str, participant_name: str,
                                       base_assets_path: str, id_collection: int, owner_uuid: str,
