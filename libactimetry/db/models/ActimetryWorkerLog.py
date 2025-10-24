@@ -51,3 +51,17 @@ class ActimetryWorkerLog(BaseModel):
     @staticmethod
     def get_log_for_worker(uuid_worker: str):
         return ActimetryWorkerLog.query.filter_by(worker_uuid=uuid_worker).first()
+
+    @staticmethod
+    def get_status_description(status: WorkerStatus) -> str:
+        if status == WorkerStatus.STATUS_READY:
+            return "Ready"
+        if status == WorkerStatus.STATUS_ABORTED:
+            return "Aborted"
+        if status == WorkerStatus.STATUS_COMPLETED:
+            return "Completed"
+        if status == WorkerStatus.STATUS_PLANNED:
+            return "Planned"
+        if status == WorkerStatus.STATUS_RUNNING:
+            return "Running"
+        return 'Unknown Status'

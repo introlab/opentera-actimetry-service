@@ -123,11 +123,13 @@ class UserQueryActimetryProcessing(UserQueryBase):
         )
         result = Globals.worker_man.start_processing_worker(
             script=script_name,
+            script_name=json_worker["key"],
             datapath=database_path,
             owner_type=WorkerOwnerType.OWNER_USER,
             owner_uuid=current_user_client.user_uuid,
             params=json_worker["parameters"],
             database_id=database.id_database,
+            context=participant.json()[0]['participant_name']
         )
 
         if not result['success']:

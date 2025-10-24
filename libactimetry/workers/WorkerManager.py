@@ -25,7 +25,7 @@ class WorkerManager:
 
     def worker_log_stdout(self, worker_uuid: uuid.UUID, text: str):
         with self.flask_app.app_context():
-            print(str(worker_uuid) + ' - ' + text)
+            print(self._processes[worker_uuid]['name'] + ' - ' + text)
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
             if worker_log:
                 worker_log.worker_logs += text
@@ -33,7 +33,7 @@ class WorkerManager:
 
     def worker_log_stderr(self, worker_uuid: uuid.UUID, text: str):
         with self.flask_app.app_context():
-            print(str(worker_uuid) + ' - ERROR ' + text)
+            print(self._processes[worker_uuid]['name'] + ' - * ERROR * ' + text)
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
             if worker_log:
                 worker_log.worker_errors += text
@@ -48,6 +48,17 @@ class WorkerManager:
                     worker_log.worker_end_time = datetime.datetime.now()
                 worker_log.commit()
 
+        if status != WorkerStatus.STATUS_ABORTED:
+            Globals.service.logger.log_info('ActimetryService.WorkerManager', self._processes[worker_uuid]['name'],
+                                            self._processes[worker_uuid]['context'],
+                                            self._processes[worker_uuid]['source'],
+                                            ActimetryWorkerLog.get_status_description(status))
+        else:
+            Globals.service.logger.log_error('ActimetryService.WorkerManager', self._processes[worker_uuid]['name'],
+                                             self._processes[worker_uuid]['context'],
+                                             self._processes[worker_uuid]['source'],
+                                             ActimetryWorkerLog.get_status_description(status))
+
         if ended:
             del self._processes[worker_uuid]
 
@@ -58,15 +69,15 @@ class WorkerManager:
                 worker_log.worker_results = results
                 worker_log.commit()
 
-    def start_processing_worker(self, script: str, datapath: str, params: dict, owner_uuid: str,
-                                owner_type: WorkerOwnerType, database_id: int) -> dict:  # (uuid.UUID, WorkerStatus):
+    def start_processing_worker(self, script: str, script_name: str, datapath: str, params: dict, owner_uuid: str,
+                                owner_type: WorkerOwnerType, database_id: int, context: str = 'Unknown') -> dict:  # (uuid.UUID, WorkerStatus):
         rval = {'success': False, 'message': "", 'worker_uuid': None, 'status': WorkerStatus.STATUS_PLANNED}
 
         # Validate if path exists
         script_path = os.path.abspath('libactimetry' + os.sep + script)
         if not os.path.isfile(script_path):
             rval['success'] = False
-            rval['message'] = 'Unable to find script ' + script
+            rval['message'] = 'Unable to find script for ' + script_name
             return rval
 
         # Create a job UUID
@@ -89,7 +100,8 @@ class WorkerManager:
 
         # Launch process, will be monitored by a thread
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self._processes[rval['worker_uuid']] = process
+        self._processes[rval['worker_uuid']] = {'name': 'Processor',
+                                                'context': context, 'source': script_name, 'process': process}
 
         thread = threading.Thread(target=self.process_monitor_thread, args=(process, rval['worker_uuid']))
         thread.start()
@@ -138,7 +150,9 @@ class WorkerManager:
 
         # Launch process, will be monitored by a thread
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        self._processes[job_uuid] = process
+        self._processes[job_uuid] = {'name': 'OpenIMU Importer',
+                                     'context': participant_name,
+                                     'source': 'Session ID ' + str(id_collection), 'process': process}
 
         thread = threading.Thread(target=self.process_monitor_thread, args=(process, job_uuid))
         thread.start()
