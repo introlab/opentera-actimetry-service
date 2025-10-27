@@ -77,7 +77,7 @@ class WorkerManager:
         rval = {'success': False, 'message': "", 'worker_uuid': None, 'status': WorkerStatus.STATUS_PLANNED}
 
         # Validate if path exists
-        script_path = os.path.abspath('libactimetry' + os.sep + script)
+        script_path = os.path.abspath(os.path.dirname(__file__) + os.sep + 'algorithms' + os.sep + script)
         if not os.path.isfile(script_path):
             rval['success'] = False
             rval['message'] = 'Unable to find script for ' + script_name
@@ -155,7 +155,7 @@ class WorkerManager:
                   'database_path': Globals.config_man.actimetry_service_config["databases_directory"],
                   'assets': assets_list, 'database': database.database_uuid, 'participant': participant_name}
         # Launch subprocess
-        command = [sys.executable, os.path.abspath('libactimetry' + os.sep + 'workers/OpenIMUImporterWorker.py'),
+        command = [sys.executable, os.path.abspath(os.path.dirname(__file__) + os.sep + 'OpenIMUImporterWorker.py'),
                    '--job_id', job_uuid, '--params', base64.b64encode(json.dumps(params).encode('utf-8'))]
 
         # Launch process, will be monitored by a thread

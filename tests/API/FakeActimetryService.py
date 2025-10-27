@@ -1,3 +1,4 @@
+import os.path
 import uuid
 from io import BytesIO
 import json
@@ -42,7 +43,7 @@ class FakeFlaskModule(BaseModule):
             self.flask_app,
             locale_selector=get_locale,
             timezone_selector=get_timezone,
-            default_domain="opentera-surveyjs-service",
+            default_domain="opentera-actimetry-service",
         )
 
         self.flask_app.debug = False
@@ -145,6 +146,9 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
         self.config_man.create_defaults()
         self.config_man.backend_config["hostname"] = "127.0.0.1"
         self.config_man.redis_config["hostname"] = "127.0.0.1"
+        self.config_man.actimetry_service_config["databases_directory"] = os.path.abspath("../../../files/tests/databases")
+        self.config_man.actimetry_service_config["files_directory"] = os.path.abspath("../../../files/tests")
+        self.config_man.actimetry_service_config["temp_directory"] = os.path.abspath("../../../files/tests/tmp")
 
         self.redis = redis.Redis(
             host=self.config_man.redis_config["hostname"],
@@ -229,7 +233,7 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
             token = response.json()["user_token"]
 
             # Get Service id SurveyJSService
-            params = {"service_key": "SurveyJSService"}
+            params = {"service_key": "ActimetryService"}
             response = self.get_from_opentera_with_token(token, "/api/user/services", params=params)
             if response.status_code == 200 and len(response.json()) > 0:
                 service_info = response.json()[0]

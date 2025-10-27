@@ -148,11 +148,10 @@ class UserQueryActimetryDatabase(UserQueryBase):
                 ActimetryDatabase.insert(new_database)
 
                 # Create database file
-                filename = os.path.join(
+                filename = os.path.abspath(os.path.join(
                     Globals.config_man.actimetry_service_config["databases_directory"], new_database.database_uuid
-                )
-                os.makedirs(os.path.dirname(Globals.config_man.actimetry_service_config["databases_directory"]),
-                            exist_ok=True)
+                ))
+                os.makedirs(Globals.config_man.actimetry_service_config["databases_directory"], exist_ok=True)
 
                 # OpenIMU database creation
                 if new_database.database_type == ActimetryDatabaseType.DATABASETYPE_OPENIMU.value:

@@ -74,14 +74,14 @@ class UserQueryActimetryDatabaseInfos(UserQueryBase):
                 database = ActimetryDatabase.get_by_id(args["id_database"])
                 if not database:
                     return gettext("No database found"), 404
-                if not self._verify_session_access(database.id_session):
+                if not self._verify_participant_access(database.database_participant_uuid):
                     return gettext("Access denied to that database"), 403
             # if database_uuid is provided, return that database
             elif args["database_uuid"] is not None:
                 database = ActimetryDatabase.get_by_uuid(args["database_uuid"])
                 if not database:
                     return gettext("No database found"), 404
-                if not self._verify_session_access(database.id_session):
+                if not self._verify_participant_access(database.database_participant_uuid):
                     return gettext("Access denied to that database"), 403
             # if database_participant_uuid is provided, return the database for the participant
             elif args["database_participant_uuid"] is not None:

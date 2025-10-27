@@ -137,9 +137,7 @@ class UserQueryActimetryProcessing(UserQueryBase):
             return gettext("No database for specified participant"), 400
 
         # Ok, start worker now!
-        script_name = (
-            "workers/algorithms/" + json_worker["key"] + "Worker.py"
-        )  # TODO: Another way to find algorithms scripts?
+        script_name = (json_worker["key"] + "Worker.py")  # TODO: Another way to find algorithms scripts?
         database_path = (
             Globals.service.config_man.actimetry_service_config["databases_directory"] + os.sep + database.database_uuid
         )
