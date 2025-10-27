@@ -90,7 +90,7 @@ class WorkerManager:
         worker_log.worker_owner_type = owner_type.value
         worker_log.worker_parameters = json.dumps({'script': script, 'params': params})
         worker_log.worker_type = WorkerType.TYPE_ALGORITHM.value
-        worker_log.worker_id_database = database_id
+        worker_log.id_database = database_id
         ActimetryWorkerLog.insert(worker_log)
 
         # Launch subprocess
@@ -138,7 +138,7 @@ class WorkerManager:
         worker_log.worker_owner_type = owner_type.value
         worker_log.worker_parameters = json.dumps(params)
         worker_log.worker_type = WorkerType.TYPE_IMPORTER.value
-        worker_log.worker_id_database = database.id_database
+        worker_log.id_database = database.id_database
         ActimetryWorkerLog.insert(worker_log)
 
         params = {'base_assets_path': base_assets_path,
