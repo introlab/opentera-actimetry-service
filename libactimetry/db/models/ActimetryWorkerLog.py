@@ -35,7 +35,7 @@ class ActimetryWorkerLog(BaseModel):
     worker_uuid = Column(String(36), nullable=False, unique=True)
     worker_owner_uuid = Column(String(36), nullable=False)
     worker_owner_type = Column(SmallInteger, nullable=False)
-    id_database = Column(Integer, ForeignKey('t_actimetry_databases'), nullable=True)
+    id_database = Column(Integer, ForeignKey('t_actimetry_databases', ondelete='cascade'), nullable=True)
     worker_type = Column(SmallInteger, nullable=False)
     worker_start_time = Column(TIMESTAMP(timezone=True), nullable=False, default=func.now())
     worker_end_time = Column(TIMESTAMP(timezone=True), nullable=True)

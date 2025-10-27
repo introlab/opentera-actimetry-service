@@ -40,6 +40,8 @@ class WorkerManager:
                 worker_log.commit()
 
     def worker_update_status(self, worker_uuid: uuid.UUID, status: WorkerStatus, ended: bool = False):
+        source = str(self._processes[worker_uuid]['source'])
+
         with self.flask_app.app_context():
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
             if worker_log:
@@ -47,16 +49,17 @@ class WorkerManager:
                 if ended:
                     worker_log.worker_end_time = datetime.datetime.now()
                 worker_log.commit()
+                if worker_log.worker_type == WorkerType.TYPE_IMPORTER.value:
+                    source = "Session ID " + source
+
 
         if status != WorkerStatus.STATUS_ABORTED:
             Globals.service.logger.log_info('ActimetryService.WorkerManager', self._processes[worker_uuid]['name'],
-                                            self._processes[worker_uuid]['context'],
-                                            self._processes[worker_uuid]['source'],
+                                            self._processes[worker_uuid]['context'], source,
                                             ActimetryWorkerLog.get_status_description(status))
         else:
             Globals.service.logger.log_error('ActimetryService.WorkerManager', self._processes[worker_uuid]['name'],
-                                             self._processes[worker_uuid]['context'],
-                                             self._processes[worker_uuid]['source'],
+                                             self._processes[worker_uuid]['context'], source,
                                              ActimetryWorkerLog.get_status_description(status))
 
         if ended:
@@ -120,6 +123,13 @@ class WorkerManager:
             print("No database for that participant - aborting import process")
             return uuid.UUID(int=0), WorkerStatus.STATUS_ABORTED
 
+        # Check if we already have a import process for that session (collection)
+        is_importing = len([job_uuid for job_uuid in self._processes
+                            if self._processes[job_uuid]['source'] == id_collection]) > 0
+        if is_importing:
+            print("Already importing data for this session (" + str(id_collection) + ") - Ignoring new request.")
+            return uuid.UUID(int=0), WorkerStatus.STATUS_ABORTED
+
         # Prepare assets mapping
         assets = ActimetryAsset.get_assets_for_collection(collection_id=id_collection)
         if not assets:
@@ -152,7 +162,7 @@ class WorkerManager:
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self._processes[job_uuid] = {'name': 'OpenIMU Importer',
                                      'context': participant_name,
-                                     'source': 'Session ID ' + str(id_collection), 'process': process}
+                                     'source': id_collection, 'process': process}
 
         thread = threading.Thread(target=self.process_monitor_thread, args=(process, job_uuid))
         thread.start()

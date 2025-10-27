@@ -241,4 +241,5 @@ class UserProcessingTest(BaseActimetryServiceAPITest):
                 wait_time -= 1
 
             self.assertTrue(wait_time > 0)
+            ActimetryWorkerLog.delete(log.id_worker_log)
             ActimetryDatabase.delete(db.id_database)
