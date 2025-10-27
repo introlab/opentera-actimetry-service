@@ -1,5 +1,6 @@
 import os
 import json
+import pickle
 from flask_babel import gettext
 from flask_restx import Resource, inputs
 from flask import request
@@ -97,6 +98,7 @@ class ServiceQueryActimetryResults(ServiceQueryBase):
                 # Get information about the database, need to open the sqlite file
                 database_folder = Globals.config_man.actimetry_service_config["databases_directory"]
                 database_file = os.path.join(database_folder, database.database_uuid)
+
                 if not os.path.exists(database_file):
                     return gettext("Database file not found"), 500
 
@@ -125,7 +127,7 @@ class ServiceQueryActimetryResults(ServiceQueryBase):
                             "id_processed_data": processed_data.id_processed_data,
                             "id_data_processor": processed_data.id_data_processor,
                             "name": processed_data.name,
-                            "data": json.loads(processed_data.data.decode("utf-8")),
+                            "data": pickle.loads(processed_data.data),  # Unpacks data from blob in database
                             "params": json.loads(processed_data.params) if processed_data.params else None,
                             "processed_time": (
                                 processed_data.processed_time.isoformat() if processed_data.processed_time else None
