@@ -1,4 +1,5 @@
 from flask import request
+from flask_restx import inputs
 from flask_babel import gettext
 from FlaskModule import user_api_ns as api
 from opentera.services.ServiceAccessManager import (
@@ -18,7 +19,9 @@ import os
 
 # Parser definition(s)
 get_parser = api.parser()
-get_parser.add_argument("uuid", type=str, help="UUID of the worker task to query", required=True)
+get_parser.add_argument("uuid", type=str, help="UUID of the worker task to query", required=False)
+get_parser.add_argument("participant_uuid", type=str, help="UUID of the participant to get workers for", required=False)
+get_parser.add_argument("in_progress", type=inputs.boolean, help="Query only in progress tasks", required=False)
 # get_parser.add_argument('key', type=str, help='Unique key (identifier) of the processing algorithm to use')
 # get_parser.add_argument('participant_uuid', type=str, help='Participant UUID to use algorithm on')
 # get_parser.add_argument('parameters', type=str, help='Parameters to use with the processing algorithm')
@@ -55,27 +58,46 @@ class UserQueryActimetryProcessing(UserQueryBase):
 
         args = get_parser.parse_args()
 
+        if not args["uuid"] and not args["participant_uuid"]:
+            return gettext("Missing parameters"), 400
+
         # TODO Handle querying list of all worker logs
 
-        # Query specific worker log
-        log: ActimetryWorkerLog = ActimetryWorkerLog.get_log_for_worker(args["uuid"])
+        if args["uuid"]:
+            # Query specific worker log
+            log: ActimetryWorkerLog = ActimetryWorkerLog.get_log_for_worker(args["uuid"])
 
-        if log is None:
-            return gettext("Forbidden access to that worker"), 403
-
-        # Check if current user can access the status of that log
-        if not current_user_client.user_superadmin:
-            # TODO Allow access to accessible participants logs
-            # TODO Allow access to accessible device logs
-            # TODO Allow access to accessible service logs
-            if (
-                log.worker_owner_type != WorkerOwnerType.OWNER_USER.value
-                or log.worker_owner_uuid != current_user_client.user_uuid
-            ):
+            if log is None:
                 return gettext("Forbidden access to that worker"), 403
 
-        # All good ! Return status
-        return log.to_json(), 200
+            # Check if current user can access the status of that log
+            if not current_user_client.user_superadmin:
+                # TODO Allow access to accessible participants logs
+                # TODO Allow access to accessible device logs
+                # TODO Allow access to accessible service logs
+                if (
+                    log.worker_owner_type != WorkerOwnerType.OWNER_USER.value
+                    or log.worker_owner_uuid != current_user_client.user_uuid
+                ):
+                    return gettext("Forbidden access to that worker"), 403
+
+            # All good ! Return status
+            return log.to_json(), 200
+        elif args["participant_uuid"]:
+            # Check if participant is accessible
+            participant_info = self._get_participant_info(args["participant_uuid"])
+            if not participant_info:
+                return gettext("No access to participant"), 403
+
+            # Query logs for participants
+            logs = ActimetryWorkerLog.get_logs_for_participant(args["participant_uuid"])
+            if args['in_progress']:
+                logs_json = [log.to_json() for log in logs if log.worker_status == WorkerStatus.STATUS_RUNNING.value]
+            else:
+                logs_json = [log.to_json() for log in logs]
+            return logs_json
+
+        return [], 200
 
     @api.doc(
         description="Starts a new processing algorithm worker task",

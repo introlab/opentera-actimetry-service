@@ -81,6 +81,7 @@ class UserProcessingTest(BaseActimetryServiceAPITest):
             response = self._get_with_token_auth(self.test_client, token=self.admin_user_token,
                                                  params={'uuid': log.worker_uuid})
             self.assertEqual(response.status_code, 200)
+            ActimetryWorkerLog.delete(log.id_worker_log)
 
     def test_get_endpoint_with_forbidden_worker_uuid(self):
         with self.app_context():
@@ -94,6 +95,111 @@ class UserProcessingTest(BaseActimetryServiceAPITest):
             response = self._get_with_token_auth(self.test_client, token=self.site_admin_token,
                                                  params={'uuid': log.worker_uuid})
             self.assertEqual(response.status_code, 403)
+            ActimetryWorkerLog.delete(log.id_worker_log)
+
+    def test_get_endpoint_with_forbidden_participant_uuid(self):
+        with self.app_context():
+            # Create test database
+            response = self._service.get_from_opentera_with_token(token=self.admin_user_token,
+                                                                  api_url='/api/user/participants',
+                                                                  params={'id_project': 3})
+
+            participant_uuid = response.json()[0]['participant_uuid']
+
+            db = ActimetryDatabase()
+            db.database_uuid = str(uuid.uuid4())
+            db.database_participant_uuid = participant_uuid
+            db.database_name = 'test_database'
+            ActimetryDatabase.insert(db)
+
+            # Create sample worker in database
+            log = ActimetryWorkerLog()
+            log.worker_uuid = str(uuid.uuid4())
+            log.worker_owner_type = WorkerOwnerType.OWNER_USER.value
+            log.worker_owner_uuid = self._admin_user['user_uuid']
+            log.worker_type = WorkerType.TYPE_GENERAL.value
+            log.id_database = db.id_database
+            ActimetryWorkerLog.insert(log)
+            response = self._get_with_token_auth(self.test_client, token=self.site_admin_token,
+                                                 params={'participant_uuid': participant_uuid})
+            self.assertEqual(response.status_code, 403)
+            ActimetryWorkerLog.delete(log.id_worker_log)
+            ActimetryDatabase.delete(db.id_database)
+
+
+    def test_get_endpoint_with_valid_participant_uuid(self):
+        with self.app_context():
+            # Create test database
+            response = self._service.get_from_opentera_with_token(token=self.admin_user_token,
+                                                                  api_url='/api/user/participants',
+                                                                  params={'id_project': 1})
+
+            participant_uuid = response.json()[0]['participant_uuid']
+
+            db = ActimetryDatabase()
+            db.database_uuid = str(uuid.uuid4())
+            db.database_participant_uuid = participant_uuid
+            db.database_name = 'test_database'
+            ActimetryDatabase.insert(db)
+
+            # Create sample worker in database
+            log = ActimetryWorkerLog()
+            log.worker_uuid = str(uuid.uuid4())
+            log.worker_owner_type = WorkerOwnerType.OWNER_USER.value
+            log.worker_owner_uuid = self._admin_user['user_uuid']
+            log.worker_type = WorkerType.TYPE_GENERAL.value
+            log.id_database = db.id_database
+            ActimetryWorkerLog.insert(log)
+            response = self._get_with_token_auth(self.test_client, token=self.site_admin_token,
+                                                 params={'participant_uuid': participant_uuid})
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(len(response.json) == 1)
+            ActimetryWorkerLog.delete(log.id_worker_log)
+            ActimetryDatabase.delete(db.id_database)
+
+    def test_get_endpoint_with_participant_uuid_and_in_progress(self):
+        with self.app_context():
+            # Create test database
+            response = self._service.get_from_opentera_with_token(token=self.admin_user_token,
+                                                                  api_url='/api/user/participants',
+                                                                  params={'id_project': 1})
+
+            participant_uuid = response.json()[0]['participant_uuid']
+
+            db = ActimetryDatabase()
+            db.database_uuid = str(uuid.uuid4())
+            db.database_participant_uuid = participant_uuid
+            db.database_name = 'test_database'
+            ActimetryDatabase.insert(db)
+
+            # Create sample worker in database
+            log = ActimetryWorkerLog()
+            log.worker_uuid = str(uuid.uuid4())
+            log.worker_owner_type = WorkerOwnerType.OWNER_USER.value
+            log.worker_owner_uuid = self._admin_user['user_uuid']
+            log.worker_type = WorkerType.TYPE_GENERAL.value
+            log.id_database = db.id_database
+            ActimetryWorkerLog.insert(log)
+            log_id1 = log.id_worker_log
+
+            log = ActimetryWorkerLog()
+            log.worker_uuid = str(uuid.uuid4())
+            log.worker_owner_type = WorkerOwnerType.OWNER_USER.value
+            log.worker_owner_uuid = self._admin_user['user_uuid']
+            log.worker_type = WorkerType.TYPE_GENERAL.value
+            log.id_database = db.id_database
+            log.worker_status = WorkerStatus.STATUS_RUNNING.value
+            ActimetryWorkerLog.insert(log)
+
+            response = self._get_with_token_auth(self.test_client, token=self.site_admin_token,
+                                                 params={'participant_uuid': participant_uuid,
+                                                         'in_progress': True})
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(len(response.json) == 1)
+            ActimetryWorkerLog.delete(log.id_worker_log)
+            ActimetryWorkerLog.delete(log_id1)
+            ActimetryDatabase.delete(db.id_database)
+
 
     def test_post_endpoint_worker(self):
         with self.app_context():
@@ -135,3 +241,4 @@ class UserProcessingTest(BaseActimetryServiceAPITest):
                 wait_time -= 1
 
             self.assertTrue(wait_time > 0)
+            ActimetryDatabase.delete(db.id_database)

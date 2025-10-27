@@ -55,6 +55,10 @@ class OpenIMUImporterWorker(BaseWorker):
                 # Import files
                 if ".data" in dest_file:
                     print("-> Loading: " + dest_file)
+                    if not os.path.isfile(dest_file):
+                        print("--> File not found, ignoring...")
+                        continue
+
                     results = importer.load(dest_file)
                     print('-> Importing...')
                     importer.import_to_database(results)
