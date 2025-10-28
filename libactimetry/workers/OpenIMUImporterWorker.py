@@ -36,6 +36,7 @@ class OpenIMUImporterWorker(BaseWorker):
 
         if not target_participant:
             self.print_err("OpenIMUImporterWorker: participant not found. Aborting")
+            db_manager.close()
             exit(1)
 
         # Create temporary files to import
@@ -80,6 +81,7 @@ class OpenIMUImporterWorker(BaseWorker):
                             )
 
                     importer.clear_recordsets()
+        db_manager.close()
         print("** OpenIMU import completed.")
 
 

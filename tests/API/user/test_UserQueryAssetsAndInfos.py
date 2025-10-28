@@ -14,9 +14,8 @@ class UserQueryAssetsAndInfosTest(BaseActimetryServiceAPITest):
         super().setUp()
         # Create test file to stream
         self.test_file_size = 1024 * 1024 * 100
-        f = open('testfile', 'wb')
-        f.write(os.urandom(self.test_file_size))
-        f.close()
+        with open('testfile', 'wb') as f:
+            f.write(os.urandom(self.test_file_size))
 
         # Add this service to a test session type
         with self.app_context():
@@ -45,7 +44,11 @@ class UserQueryAssetsAndInfosTest(BaseActimetryServiceAPITest):
     def tearDown(self):
         super().tearDown()
         if os.path.exists('testfile'):
-            os.remove('testfile')
+            try:
+                os.remove('testfile')
+            except PermissionError:
+                print("Can't remove testfile - permission denied")
+                pass
 
     def test_get_endpoint_with_invalid_token(self):
         with self.app_context():
@@ -216,6 +219,8 @@ class UserQueryAssetsAndInfosTest(BaseActimetryServiceAPITest):
             md5_received_file = self.calc_md5(received_file)
             md5_local_file = self.calc_md5(local_file)
             self.assertEqual(md5_received_file, md5_local_file)
+            local_file.close()
+            received_file.close()
 
             # Delete asset from service as user
             params = {}

@@ -158,6 +158,7 @@ class UserQueryActimetryDatabaseInfos(UserQueryBase):
                             "end_timestamp": str(recordset.end_timestamp),
                         }
                     )
+                dbman.close()
 
                 return {"file_size": file_size, "dataset_info": dataset_info, "recordsets_info": recordsets_info}, 200
 

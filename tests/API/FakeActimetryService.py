@@ -146,9 +146,9 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
         self.config_man.create_defaults()
         self.config_man.backend_config["hostname"] = "127.0.0.1"
         self.config_man.redis_config["hostname"] = "127.0.0.1"
-        self.config_man.actimetry_service_config["databases_directory"] = os.path.abspath("../../../files/tests/databases")
-        self.config_man.actimetry_service_config["files_directory"] = os.path.abspath("../../../files/tests")
-        self.config_man.actimetry_service_config["temp_directory"] = os.path.abspath("../../../files/tests/tmp")
+        self.config_man.actimetry_service_config["databases_directory"] = os.path.abspath(os.path.dirname(__file__) + "../../../files/tests/databases")
+        self.config_man.actimetry_service_config["files_directory"] = os.path.abspath(os.path.dirname(__file__) + "../../../files/tests")
+        self.config_man.actimetry_service_config["temp_directory"] = os.path.abspath(os.path.dirname(__file__) + "../../../files/tests/tmp")
 
         self.redis = redis.Redis(
             host=self.config_man.redis_config["hostname"],
@@ -197,7 +197,6 @@ class FakeActimetryService(ServiceOpenTeraWithAssets):
 
         # WORKER MANAGER
         from libactimetry.workers.WorkerManager import WorkerManager
-
         Globals.worker_man = WorkerManager(self.flask_module)
 
     def reset_tera_server_database_and_create_service(self):

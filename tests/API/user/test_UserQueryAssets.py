@@ -2,6 +2,8 @@ import os
 import json
 import time
 import shutil
+
+import Globals
 from tests.API.BaseActimetryServiceAPITest import BaseActimetryServiceAPITest
 from libactimetry.workers.WorkerManager import WorkerManager
 from libactimetry.db.models.ActimetryWorkerLog import WorkerOwnerType, ActimetryWorkerLog, WorkerStatus
@@ -76,8 +78,8 @@ class UserAssetFileTest(BaseActimetryServiceAPITest):
             self.assertEqual(response.status_code, 200)
 
             # Import sample assets
-            base_sample_dir = 'tests/sample_data/AppleWatch'
-            samples = os.listdir(base_sample_dir)
+            base_sample_dir = os.path.dirname(__file__) + '../../../sample_data/AppleWatch'
+            samples = os.listdir(os.path.abspath(base_sample_dir))
             file_asset = {}
             for sample in samples:
                 file_asset['id_session'] = session['id_session']
@@ -94,7 +96,7 @@ class UserAssetFileTest(BaseActimetryServiceAPITest):
             worker_man = WorkerManager(self._service.flask_app)
             (work_uuid, status) = worker_man.start_openimu_importer_worker(participant_uuid=participant_uuid,
                                                                            participant_name=participant_name,
-                                                                           base_assets_path='./files_test',
+                                                                           base_assets_path=Globals.config_man.actimetry_service_config["files_directory"],
                                                                            id_collection=session['id_session'],
                                                                            owner_uuid=self._service.service_uuid,
                                                                            owner_type=WorkerOwnerType.OWNER_SERVICE)
@@ -120,7 +122,3 @@ class UserAssetFileTest(BaseActimetryServiceAPITest):
 
             # Check database structure
             #TODO
-
-            # Delete assets files
-            shutil.rmtree('./files_test')
-

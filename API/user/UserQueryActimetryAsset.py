@@ -59,7 +59,7 @@ class UserQueryActimetryAsset(UserQueryBase):
         if not self.test:
             src_dir = Globals.config_man.actimetry_service_config["files_directory"]
         else:
-            src_dir = "."
+            src_dir = os.path.abspath(os.path.dirname(__file__) + "/../../files/tests")
 
         filename = asset.asset_original_filename
         return send_file(src_dir + "/" + str(asset.asset_uuid), as_attachment=True, download_name=filename)
@@ -161,7 +161,7 @@ class UserQueryActimetryAsset(UserQueryBase):
         if not self.test:
             filename = os.path.join(Globals.config_man.actimetry_service_config["files_directory"], asset_uuid)
         else:
-            test_assets_path = "./files_test"
+            test_assets_path = Globals.config_man.actimetry_service_config["files_directory"]
             os.makedirs(test_assets_path, exist_ok=True)
             filename = os.path.join(test_assets_path, asset_uuid)
 

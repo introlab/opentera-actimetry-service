@@ -3,13 +3,11 @@ import time
 import uuid
 import jwt
 import os
-import json
+import shutil
 import requests
-from datetime import date, datetime, timedelta
+from datetime import datetime
 
 from flask.testing import FlaskClient
-from flask import Flask
-from ConfigManager import ConfigManager
 from opentera.services.ServiceAccessManager import ServiceAccessManager
 from tests.API.FakeActimetryService import FakeActimetryService
 from libactimetry.db.models.BaseModel import BaseModel
@@ -62,6 +60,10 @@ class BaseActimetryServiceAPITest(unittest.TestCase):
     def tearDownClass(cls):
         with cls._service.flask_app.app_context():
             BaseModel.metadata.drop_all(cls.db.engine)
+        # Remove test files
+        if os.path.exists(cls._service.config_man.actimetry_service_config["files_directory"]):
+            shutil.rmtree(cls._service.config_man.actimetry_service_config["files_directory"])
+
 
     def setUp(self):
         self.assertIsNotNone(self._service)

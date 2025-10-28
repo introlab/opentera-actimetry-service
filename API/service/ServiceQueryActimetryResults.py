@@ -135,6 +135,7 @@ class ServiceQueryActimetryResults(ServiceQueryBase):
                     except (JSONDecodeError, TypeError) as e:
                         # If data is not valid JSON, skip this entry
                         continue
+                dbman.close()
                 return results, 200
 
             except Exception as e:
