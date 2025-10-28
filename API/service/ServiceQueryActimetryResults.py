@@ -24,6 +24,10 @@ from API.service.ServiceQueryBase import ServiceQueryBase
 import Globals as Globals
 from libopenimu.db.DBManager import DBManager as OpenIMUDBManager
 from libopenimu.models.Participant import Participant as OpenIMUParticipant
+from libopenimu.models.Recordset import Recordset as OpenIMURecordset
+from libopenimu.models.Subrecord import Subrecord as OpenIMUSubrecord
+from libopenimu.models.ProcessedData import ProcessedData as OpenIMUProcessedData
+from libopenimu.models.ProcessedDataRef import ProcessedDataRef as OpenIMUProcessedDataRef
 
 # Parser definition(s)
 get_parser = api.parser()
@@ -114,15 +118,42 @@ class ServiceQueryActimetryResults(ServiceQueryBase):
                     data = Column(BLOB, nullable=False)
                     params = Column(String, nullable=True)
                     processed_time = Column(TIMESTAMP, nullable=False)
+
+                    processed_data_ref = relationship("ProcessedDataRef", cascade="all,delete", back_populates="processed_data")
                 """
                 results = []
 
-                # We assume here data is JSON encoded in the BLOB
-                # We also assume params is JSON encoded in the string
-
-                # TODO Validate data and params with JSON schema from the algorithm
                 for processed_data in all_processed_data:
                     try:
+                        all_refs = []
+
+                        for ref in processed_data.processed_data_ref:
+                            ref_dict = {
+                                "id_processed_data_ref": ref.id_processed_data_ref,
+                                "id_processed_data": ref.id_processed_data,
+                                "id_recordset": ref.id_recordset,
+                                "id_subrecord": ref.id_subrecord,
+                            }
+
+                            if ref.id_recordset:
+                                ref_dict["recordset"] = {
+                                    "id_recordset": ref.recordset.id_recordset,
+                                    "name": ref.recordset.name,
+                                    "start_time": ref.recordset.start_timestamp.isoformat() if ref.recordset.start_timestamp else None,
+                                    "end_time": ref.recordset.end_timestamp.isoformat() if ref.recordset.end_timestamp else None,
+                                }
+
+                            if ref.id_subrecord:
+                                ref_dict["subrecord"] = {
+                                    "id_subrecord": ref.subrecord.id_subrecord,
+                                    "name": ref.subrecord.name,
+                                    "start_time": ref.subrecord.start_timestamp.isoformat() if ref.subrecord.start_timestamp else None,
+                                    "end_time": ref.subrecord.end_timestamp.isoformat() if ref.subrecord.end_timestamp else None,
+                                }
+
+                            all_refs.append(ref_dict)
+
+
                         result = {
                             "id_processed_data": processed_data.id_processed_data,
                             "id_data_processor": processed_data.id_data_processor,
@@ -132,10 +163,11 @@ class ServiceQueryActimetryResults(ServiceQueryBase):
                             "processed_time": (
                                 processed_data.processed_time.isoformat() if processed_data.processed_time else None
                             ),
+                            "processed_data_ref": all_refs,
                         }
                         results.append(result)
-                    except (JSONDecodeError, TypeError) as e:
-                        # If data is not valid JSON, skip this entry
+                    except Exception as e:
+                        print(f"Error processing processed_data id {processed_data.id_processed_data}: {e}")
                         continue
                 return results, 200
 
