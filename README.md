@@ -42,7 +42,7 @@ Add the [config/opentera-actimetry-service.conf](config/opentera-actimetry-servi
 
 ## Running the service (configure once)
 
-### Create a systemd service
+### 5. Create a systemd service
 Create a systemd service file in the /lib/systemd/system folder named `opentera-actimetry-service.service` with the following content:
 
 ```ini
@@ -70,7 +70,7 @@ KillSignal=SIGINT
 WantedBy=multi-user.target opentera.service
 ```
 
-### Register the service in OpenTera
+### 6. Register the service in OpenTera
 
 Go to your project directory and execute the following commands:
 
@@ -81,7 +81,7 @@ source <Path to your opentera-actimetry-service.git repository>/venv/bin/activat
 python3 <Path to your opentera-actimetry-service.git repository>/tools/create_actimetry_service.py --server_url="your_opentera_server_url" --admin_user="your_admin_username" --admin_password="your_admin_password"
 ```
 
-### Reload systemd and start the service
+### 7. Reload systemd and start the service
 
 ```bash
 sudo systemctl daemon-reload
