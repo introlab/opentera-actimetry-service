@@ -13,7 +13,7 @@ from sqlalchemy.orm import sessionmaker, scoped_session
 from libactimetry.db.models.ActimetryWorkerLog import ActimetryWorkerLog, WorkerType, WorkerOwnerType, WorkerStatus
 from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase
 from libactimetry.db.models.ActimetryAsset import ActimetryAsset
-
+from opentera.db.models.TeraSessionEvent import TeraSessionEvent
 
 class WorkerManager:
     def __init__(self, app):
@@ -41,6 +41,7 @@ class WorkerManager:
 
     def worker_update_status(self, worker_uuid: uuid.UUID, status: WorkerStatus, ended: bool = False):
         source = str(self._processes[worker_uuid]['source'])
+        id_session = int(source)
 
         with self.flask_app.app_context():
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
@@ -51,6 +52,11 @@ class WorkerManager:
                 worker_log.commit()
                 if worker_log.worker_type == WorkerType.TYPE_IMPORTER.value:
                     source = "Session ID " + source
+
+        self.send_session_event(id_session=id_session,
+                                id_session_event_type=TeraSessionEvent.SessionEventTypes.GENERAL_INFO.value,
+                                session_event_context='ActimetryService.WorkerManager',
+                                session_event_text=f'Import status {ActimetryWorkerLog.get_status_description(status)}')
 
 
         if status != WorkerStatus.STATUS_ABORTED:
@@ -104,7 +110,7 @@ class WorkerManager:
         # Launch process, will be monitored by a thread
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self._processes[rval['worker_uuid']] = {'name': 'Processor',
-                                                'context': context, 'source': script_name, 'process': process}
+                                                'context': context, 'source': script_name, 'process': process, 'params': params}
 
         thread = threading.Thread(target=self.process_monitor_thread, args=(process, rval['worker_uuid']))
         thread.start()
@@ -165,6 +171,13 @@ class WorkerManager:
                                      'source': id_collection, 'process': process}
 
         thread = threading.Thread(target=self.process_monitor_thread, args=(process, job_uuid))
+
+        # Add event to session (on base server)
+        self.send_session_event(id_session=id_collection,
+                                id_session_event_type=TeraSessionEvent.SessionEventTypes.GENERAL_INFO.value,
+                                session_event_context='ActimetryService.WorkerManager',
+                                session_event_text=f'Importing actimetry data for participant {participant_name} with OpenIMUImporterWorker.')
+
         thread.start()
 
         return job_uuid, WorkerStatus.STATUS_RUNNING
@@ -191,3 +204,19 @@ class WorkerManager:
             status = WorkerStatus.STATUS_ABORTED
         self.worker_update_status(worker_uuid, status=status, ended=True)
         threading.main_thread().join()
+
+    def send_session_event(self, id_session: int, id_session_event_type: int, session_event_context: str,
+                           session_event_text: str) -> bool:
+        """
+        Send a session event to OpenTera server
+        """
+        event = {"session_event": {
+            "id_session": id_session,
+            "id_session_event": 0, # new event
+            "id_session_event_type": id_session_event_type,
+            "session_event_context": session_event_context,
+            "session_event_datetime": datetime.datetime.now().isoformat(),
+            "session_event_text": session_event_text
+        }}
+        response = Globals.service.post_to_opentera('/api/service/sessions/events', json_data=event)
+        return response.status_code == 200
