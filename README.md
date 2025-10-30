@@ -1,5 +1,15 @@
 # opentera-actimetry-service
-Actimetry service
+Actimetry service for the OpenTera platform. This service manages actimetry data files and their processing. It is based on [opentera](https://github.com/introlab/opentera) and uses its service architecture. Data processing is done using [OpenIMU](https://github.com/introlab/OpenIMU) libraries.
+
+Base concept:
+
+- Actimetry data files are uploaded by clients to the OpenTera server using REST API calls.
+- The Actimetry Service retrieves these files from the server, stores them locally, and processes them using OpenIMU tools in a participant database.
+- Processed data and reports are accessible through the REST API that can be used by other services or clients.
+
+## Authors
+- Simon Brière (@sbriere)
+- Dominic Létourneau (@doumdi)
 
 ## Configuration
 
