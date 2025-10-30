@@ -40,6 +40,16 @@ Edit the [ActimetryService.json](ActimetryService.json) to fit your specific set
 
 Add the [config/opentera-actimetry-service.conf](config/opentera-actimetry-service.conf) to your nginx configuration file to forward requests to the Actimetry Service.
 
+### 5. Create database and user for actimetry service
+Create a database and a user for the actimetry service in your PostgreSQL server. You can use the following SQL commands as an example:
+
+```sql
+CREATE DATABASE opentera_actimetry;
+CREATE USER actimetry_user WITH ENCRYPTED PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE opentera_actimetry TO actimetry_user;
+```
+>Update your [ActimetryService.json](ActimetryService.json) configuration file with the database connection details.
+
 ## Running the service (configure once)
 
 ### 5. Create a systemd service
