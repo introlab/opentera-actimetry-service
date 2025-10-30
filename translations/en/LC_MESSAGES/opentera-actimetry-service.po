@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2025-06-02 20:16+0000\n"
+"POT-Creation-Date: 2025-10-30 10:54-0400\n"
 "PO-Revision-Date: 2025-06-02 20:16+0000\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: en\n"
@@ -17,4 +17,238 @@ msgstr ""
 "Content-Type: text/plain; charset=utf-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.17.0\n"
+
+#: API/Version.py:37
+msgid "Service not initialized"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:41 API/device/QueryActimetryAsset.py:68
+#: API/user/UserQueryActimetryAlgorithm.py:44
+#: API/user/UserQueryActimetryAsset.py:47
+#: API/user/UserQueryActimetryAsset.py:78
+#: API/user/UserQueryActimetryAsset.py:228
+#: API/user/UserQueryActimetryAssetInfos.py:50
+#: API/user/UserQueryActimetryAssetInfos.py:79
+#: API/user/UserQueryActimetryProcessing.py:57
+#: API/user/UserQueryActimetryProcessing.py:114
+msgid "Invalid login type"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:46 API/user/UserQueryActimetryAsset.py:52
+#: API/user/UserQueryActimetryAsset.py:236
+msgid "Access denied to asset"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:51 API/user/UserQueryActimetryAsset.py:57
+#: API/user/UserQueryActimetryAssetInfos.py:61
+#: API/user/UserQueryActimetryAssetInfos.py:126
+msgid "No asset found"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:71 API/user/UserQueryActimetryAsset.py:81
+msgid "Wrong content type"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:74 API/user/UserQueryActimetryAsset.py:84
+msgid "Missing file asset information"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:77 API/user/UserQueryActimetryAsset.py:87
+msgid "Missing uploaded file"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:82 API/user/UserQueryActimetryAsset.py:92
+msgid "Missing filename"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:88 API/user/UserQueryActimetryAsset.py:98
+msgid "Invalid file_asset format"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:91 API/user/UserQueryActimetryAsset.py:101
+msgid "Missing required field(s) in asset descriptor"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:98 API/device/QueryActimetryAsset.py:106
+#: API/user/UserQueryActimetryAsset.py:107
+#: API/user/UserQueryActimetryAsset.py:126
+msgid "Session access is forbidden"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:133
+#: API/user/UserQueryActimetryAsset.py:154
+msgid "Unable to create asset"
+msgstr ""
+
+#: API/device/QueryActimetryAsset.py:199
+msgid "Forbidden for security reasons"
+msgstr ""
+
+#: API/service/ServiceQueryActimetryResults.py:65
+#: API/user/UserQueryActimetryDatabase.py:59
+#: API/user/UserQueryActimetryDatabase.py:117
+#: API/user/UserQueryActimetryDatabase.py:210
+#: API/user/UserQueryActimetryDatabaseInfos.py:61
+msgid "Access denied"
+msgstr ""
+
+#: API/service/ServiceQueryActimetryResults.py:72
+#: API/user/UserQueryActimetryDatabase.py:66
+#: API/user/UserQueryActimetryDatabaseInfos.py:68
+msgid "At least one parameter must be provided"
+msgstr ""
+
+#: API/service/ServiceQueryActimetryResults.py:80
+#: API/service/ServiceQueryActimetryResults.py:87
+#: API/service/ServiceQueryActimetryResults.py:99
+#: API/user/UserQueryActimetryDatabase.py:72
+#: API/user/UserQueryActimetryDatabase.py:83
+#: API/user/UserQueryActimetryDatabase.py:167
+#: API/user/UserQueryActimetryDatabase.py:219
+#: API/user/UserQueryActimetryDatabaseInfos.py:76
+#: API/user/UserQueryActimetryDatabaseInfos.py:83
+#: API/user/UserQueryActimetryDatabaseInfos.py:96
+msgid "No database found"
+msgstr ""
+
+#: API/service/ServiceQueryActimetryResults.py:82
+#: API/service/ServiceQueryActimetryResults.py:89
+#: API/service/ServiceQueryActimetryResults.py:96
+#: API/user/UserQueryActimetryDatabaseInfos.py:78
+#: API/user/UserQueryActimetryDatabaseInfos.py:85
+msgid "Access denied to that database"
+msgstr ""
+
+#: API/service/ServiceQueryActimetryResults.py:94
+#: API/user/UserQueryActimetryDatabase.py:97
+#: API/user/UserQueryActimetryDatabaseInfos.py:93
+msgid "No database found for participant"
+msgstr ""
+
+#: API/service/ServiceQueryActimetryResults.py:107
+#: API/user/UserQueryActimetryDatabaseInfos.py:103
+msgid "Database file not found"
+msgstr ""
+
+#: API/service/ServiceQueryActimetryResults.py:176
+#: API/user/UserQueryActimetryDatabaseInfos.py:166
+msgid "Error opening database: "
+msgstr ""
+
+#: API/service/ServiceQueryActimetryResults.py:179
+#: API/user/UserQueryActimetryDatabase.py:100
+#: API/user/UserQueryActimetryDatabaseInfos.py:169
+msgid "Invalid parameter: "
+msgstr ""
+
+#: API/user/UserQueryActimetryAlgorithm.py:181
+msgid "Unknown processing algorithm"
+msgstr ""
+
+#: API/user/UserQueryActimetryAsset.py:241
+msgid "Unable to delete asset"
+msgstr ""
+
+#: API/user/UserQueryActimetryAssetInfos.py:55
+msgid "Access denied for that asset"
+msgstr ""
+
+#: API/user/UserQueryActimetryAssetInfos.py:82
+msgid "Badly formatted request"
+msgstr ""
+
+#: API/user/UserQueryActimetryAssetInfos.py:90
+msgid "Missing access token for at least one requested asset"
+msgstr ""
+
+#: API/user/UserQueryActimetryAssetInfos.py:92
+msgid "Missing asset UUID for at least one requested asset"
+msgstr ""
+
+#: API/user/UserQueryActimetryAssetInfos.py:97
+msgid "Access denied for at least one requested asset"
+msgstr ""
+
+#: API/user/UserQueryActimetryAssetInfos.py:109
+msgid "Missing access token"
+msgstr ""
+
+#: API/user/UserQueryActimetryAssetInfos.py:112
+msgid "Missing asset uuid"
+msgstr ""
+
+#: API/user/UserQueryActimetryAssetInfos.py:117
+msgid "Forbidden"
+msgstr ""
+
+#: API/user/UserQueryActimetryAssetInfos.py:121
+msgid "Only original filename can be changed from here"
+msgstr ""
+
+#: API/user/UserQueryActimetryDatabase.py:77
+#: API/user/UserQueryActimetryDatabase.py:88
+#: API/user/UserQueryActimetryDatabase.py:94
+#: API/user/UserQueryActimetryDatabase.py:136
+#: API/user/UserQueryActimetryDatabaseInfos.py:90
+#: API/user/UserQueryActimetryProcessing.py:90
+msgid "No access to participant"
+msgstr ""
+
+#: API/user/UserQueryActimetryDatabase.py:132
+msgid "Missing participant UUID"
+msgstr ""
+
+#: API/user/UserQueryActimetryDatabase.py:160
+msgid "Unsupported database type"
+msgstr ""
+
+#: API/user/UserQueryActimetryDatabase.py:179
+#: API/user/UserQueryActimetryDatabase.py:231
+msgid "Required parameter is missing"
+msgstr ""
+
+#: API/user/UserQueryActimetryDatabase.py:181
+#: API/user/UserQueryActimetryDatabase.py:233
+msgid "Invalid JSON structure"
+msgstr ""
+
+#: API/user/UserQueryActimetryDatabase.py:183
+#: API/user/UserQueryActimetryDatabase.py:235
+msgid "Invalid JSON schema"
+msgstr ""
+
+#: API/user/UserQueryActimetryDatabase.py:185
+#: API/user/UserQueryActimetryDatabase.py:237
+msgid "Invalid JSON"
+msgstr ""
+
+#: API/user/UserQueryActimetryDatabase.py:191
+#: API/user/UserQueryActimetryDatabase.py:248
+msgid "Database error"
+msgstr ""
+
+#: API/user/UserQueryActimetryDatabase.py:228
+msgid "Error deleting database"
+msgstr ""
+
+#: API/user/UserQueryActimetryProcessing.py:62
+msgid "Missing parameters"
+msgstr ""
+
+#: API/user/UserQueryActimetryProcessing.py:71
+#: API/user/UserQueryActimetryProcessing.py:82
+msgid "Forbidden access to that worker"
+msgstr ""
+
+#: API/user/UserQueryActimetryProcessing.py:125
+msgid "Invalid algorithm key"
+msgstr ""
+
+#: API/user/UserQueryActimetryProcessing.py:132
+msgid "Forbidden access to the participant"
+msgstr ""
+
+#: API/user/UserQueryActimetryProcessing.py:137
+msgid "No database for specified participant"
+msgstr ""
 
