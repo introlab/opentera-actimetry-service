@@ -69,7 +69,35 @@ class WorkerManager:
                                              ActimetryWorkerLog.get_status_description(status))
 
         if ended:
+            if worker_log.worker_type == WorkerType.TYPE_IMPORTER.value and status != WorkerStatus.STATUS_ABORTED:
+                id_database = worker_log.id_database
+                with self.flask_app.app_context():
+                    # Check if already a worker planned
+                    if not ActimetryWorkerLog.get_logs_for_database(id_database, WorkerStatus.STATUS_PLANNED):
+                        database_infos = ActimetryDatabase.get_by_id(id_database)
+                        database_path = (
+                                Globals.service.config_man.actimetry_service_config[
+                                    "databases_directory"] + os.sep + database_infos.database_uuid
+                        )
+
+                        process_worker = ActimetryWorkerLog()
+                        process_worker.worker_uuid = str(uuid.uuid4())
+                        process_worker.worker_owner_uuid = worker_log.worker_owner_uuid
+                        process_worker.worker_owner_type = worker_log.worker_owner_type
+                        # TODO: Configure specific processor and parameters to start
+                        process_worker.worker_parameters = json.dumps({'script': "Fraysse2021",
+                                                                       'script_name': "Fraysse2021Worker.py",
+                                                                       'database_path': database_path,
+                                                                       'params': None,
+                                                                       'context': self._processes[worker_uuid]['context'] })
+                        process_worker.worker_type = WorkerType.TYPE_ALGORITHM.value
+                        process_worker.worker_status = WorkerStatus.STATUS_PLANNED.value
+                        process_worker.worker_start_time = datetime.datetime.now() + datetime.timedelta(minutes=1)# + datetime.timedelta(days=1)
+                        process_worker.id_database = id_database
+                        ActimetryWorkerLog.insert(process_worker)
+
             del self._processes[worker_uuid]
+
 
     def worker_set_results(self, worker_uuid: uuid.UUID, results: str):
         with self.flask_app.app_context():

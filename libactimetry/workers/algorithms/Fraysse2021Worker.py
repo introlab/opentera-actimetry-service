@@ -52,10 +52,14 @@ class Fraysse2021Worker(BaseWorker):
         # Process algorithm once for each recordset that makes a day
         # Default params?
         algo_factory = Fraysse2021Factory()
-        # params = {}
-        # for default_param in algo_factory.params():
-        #     params[default_param] = default_param["default_value"]
+
         params = json.loads(self._params)
+        if not params:
+            # Default parameters if none specified
+            print("Using default parameters")
+            params = {}
+            for default_param in algo_factory.params():
+                params[default_param] = default_param["default_value"]
         algorithm = Fraysse2021(params)
 
         for date in self.to_process:

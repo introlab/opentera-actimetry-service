@@ -58,6 +58,14 @@ class ActimetryWorkerLog(BaseModel):
                 filter_by(database_participant_uuid=uuid_participant).all())
 
     @staticmethod
+    def get_logs_for_database(database_id: int, status: WorkerStatus | None = None):
+        query = ActimetryWorkerLog.query.filter_by(id_database=database_id)
+        if status:
+            query = query.filter_by(worker_status=status.value)
+
+        return query.all()
+
+    @staticmethod
     def get_status_description(status: WorkerStatus) -> str:
         if status == WorkerStatus.STATUS_READY:
             return "Ready"
