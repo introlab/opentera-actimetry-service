@@ -136,6 +136,23 @@ class ActimetryService(ServiceOpenTeraWithAssets):
                     if scheduled_worker.worker_type == WorkerType.TYPE_ALGORITHM.value:
                         # Importer worker
                         print("ActimetryService - Starting scheduled algorithm worker")
+                        # Get Parameters
+                        parameters = json.loads(scheduled_worker.worker_parameters)
+
+                        results = Globals.worker_man.start_processing_worker(
+                            script=parameters.get('script', ''),
+                            script_name=parameters.get('script_name', ''),
+                            datapath=parameters.get('database_path', ''),
+                            params=parameters.get('params', None),
+                            owner_uuid=scheduled_worker.worker_owner_uuid,
+                            owner_type=WorkerOwnerType(scheduled_worker.worker_owner_type),
+                            database_id=scheduled_worker.id_database,
+                            context=parameters.get('context', 'Unknown'),
+                            worker_log=scheduled_worker
+                        )
+
+                        print(f"ActimetryService - Scheduled algorithm worker started: {results}")
+
 
     def notify_service_messages(self, pattern, channel, message):
         print("ActimetryService - notify_service_message", pattern, channel, message)
@@ -219,7 +236,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Actimetry Service")
     parser.add_argument("--enable_tests", help="Test mode for service.", default=False)
-    parser.add_argument("--conf", help="Configuration file", default="ActimetryService-prod.json")
+    parser.add_argument("--conf", help="Configuration file", default="ActimetryService.json")
     args = parser.parse_args()
 
     # Load configuration
