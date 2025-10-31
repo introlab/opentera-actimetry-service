@@ -49,30 +49,27 @@ class WorkerManager:
                 if ended:
                     worker_log.worker_end_time = datetime.datetime.now()
                 worker_log.commit()
-                if worker_log.worker_type == WorkerType.TYPE_IMPORTER.value:
-                    source = "Session ID " + source
 
-        if worker_log.worker_type == WorkerType.TYPE_IMPORTER.value:
-            id_session = int(source)
-            self.send_session_event(id_session=id_session,
-                                    id_session_event_type=TeraSessionEvent.SessionEventTypes.GENERAL_INFO.value,
-                                    session_event_context='ActimetryService.WorkerManager',
-                                    session_event_text=f'Import status {ActimetryWorkerLog.get_status_description(status)}')
+            if 'id_session' in self._processes[worker_uuid]:
+                id_session = int(self._processes[worker_uuid]['id_session'])
+                self.send_session_event(id_session=id_session,
+                                        id_session_event_type=TeraSessionEvent.SessionEventTypes.GENERAL_INFO.value,
+                                        session_event_context='ActimetryService.WorkerManager',
+                                        session_event_text=f'Import status {ActimetryWorkerLog.get_status_description(status)}')
 
 
-        if status != WorkerStatus.STATUS_ABORTED:
-            Globals.service.logger.log_info('ActimetryService.WorkerManager', self._processes[worker_uuid]['name'],
-                                            self._processes[worker_uuid]['context'], source,
-                                            ActimetryWorkerLog.get_status_description(status))
-        else:
-            Globals.service.logger.log_error('ActimetryService.WorkerManager', self._processes[worker_uuid]['name'],
-                                             self._processes[worker_uuid]['context'], source,
-                                             ActimetryWorkerLog.get_status_description(status))
+            if status != WorkerStatus.STATUS_ABORTED:
+                Globals.service.logger.log_info('ActimetryService.WorkerManager', self._processes[worker_uuid]['name'],
+                                                self._processes[worker_uuid]['context'], source,
+                                                ActimetryWorkerLog.get_status_description(status))
+            else:
+                Globals.service.logger.log_error('ActimetryService.WorkerManager', self._processes[worker_uuid]['name'],
+                                                 self._processes[worker_uuid]['context'], source,
+                                                 ActimetryWorkerLog.get_status_description(status))
 
-        if ended:
-            if worker_log.worker_type == WorkerType.TYPE_IMPORTER.value and status != WorkerStatus.STATUS_ABORTED:
-                id_database = worker_log.id_database
-                with self.flask_app.app_context():
+            if ended:
+                if worker_log.worker_type == WorkerType.TYPE_IMPORTER.value and status != WorkerStatus.STATUS_ABORTED:
+                    id_database = worker_log.id_database
                     # Check if already a worker planned
                     if not ActimetryWorkerLog.get_logs_for_database(id_database, WorkerStatus.STATUS_PLANNED):
                         database_infos = ActimetryDatabase.get_by_id(id_database)
@@ -97,7 +94,7 @@ class WorkerManager:
                         process_worker.id_database = id_database
                         ActimetryWorkerLog.insert(process_worker)
 
-            del self._processes[worker_uuid]
+                del self._processes[worker_uuid]
 
 
     def worker_set_results(self, worker_uuid: uuid.UUID, results: str):
@@ -206,7 +203,9 @@ class WorkerManager:
         process = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self._processes[job_uuid] = {'name': 'OpenIMU Importer',
                                      'context': participant_name,
-                                     'source': id_collection, 'process': process}
+                                     'source': 'Session ID ' + str(id_collection),
+                                     'id_session': id_collection,
+                                     'process': process}
 
         thread = threading.Thread(target=self.process_monitor_thread, args=(process, job_uuid))
 
