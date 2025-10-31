@@ -90,7 +90,7 @@ class WorkerManager:
                                                                        'context': self._processes[worker_uuid]['context'] })
                         process_worker.worker_type = WorkerType.TYPE_ALGORITHM.value
                         process_worker.worker_status = WorkerStatus.STATUS_PLANNED.value
-                        process_worker.worker_start_time = datetime.datetime.now() + datetime.timedelta(minutes=1)# + datetime.timedelta(days=1)
+                        process_worker.worker_start_time = datetime.datetime.now() + datetime.timedelta(days=1)
                         process_worker.id_database = id_database
                         ActimetryWorkerLog.insert(process_worker)
 
