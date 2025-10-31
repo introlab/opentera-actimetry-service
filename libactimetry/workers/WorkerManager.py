@@ -107,7 +107,8 @@ class WorkerManager:
                 worker_log.commit()
 
     def start_processing_worker(self, script: str, script_name: str, datapath: str, params: dict, owner_uuid: str,
-                                owner_type: WorkerOwnerType, database_id: int, context: str = 'Unknown') -> dict:  # (uuid.UUID, WorkerStatus):
+                                owner_type: WorkerOwnerType, database_id: int, context: str = 'Unknown',
+                                worker_log: ActimetryWorkerLog | None = None) -> dict:  # (uuid.UUID, WorkerStatus):
         rval = {'success': False, 'message': "", 'worker_uuid': None, 'status': WorkerStatus.STATUS_PLANNED}
 
         # Validate if path exists
@@ -117,18 +118,25 @@ class WorkerManager:
             rval['message'] = 'Unable to find script for ' + script_name
             return rval
 
-        # Create a job UUID
-        rval['worker_uuid'] = str(uuid.uuid4())
+        if not worker_log:
+            # Not related worker log - create a new one
+            # Create a job UUID
+            rval['worker_uuid'] = str(uuid.uuid4())
 
-        # Create worker log entry
-        worker_log = ActimetryWorkerLog()
-        worker_log.worker_uuid = rval['worker_uuid']
-        worker_log.worker_owner_uuid = owner_uuid
-        worker_log.worker_owner_type = owner_type.value
-        worker_log.worker_parameters = json.dumps({'script': script, 'params': params})
-        worker_log.worker_type = WorkerType.TYPE_ALGORITHM.value
-        worker_log.id_database = database_id
-        ActimetryWorkerLog.insert(worker_log)
+            # Create worker log entry
+            worker_log = ActimetryWorkerLog()
+            worker_log.worker_uuid = rval['worker_uuid']
+            worker_log.worker_owner_uuid = owner_uuid
+            worker_log.worker_owner_type = owner_type.value
+            worker_log.worker_parameters = json.dumps({'script': script, 'params': params})
+            worker_log.worker_type = WorkerType.TYPE_ALGORITHM.value
+            worker_log.id_database = database_id
+            ActimetryWorkerLog.insert(worker_log)
+        else:
+            # Update related worker log
+            worker_log.worker_parameters = json.dumps({'script': script, 'params': params})
+            worker_log.worker_status = WorkerStatus.STATUS_READY.value
+            ActimetryWorkerLog.db().session.commit()
 
         # Launch subprocess
         # TODO Validate if script exists
