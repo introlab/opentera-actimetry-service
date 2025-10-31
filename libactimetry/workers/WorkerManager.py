@@ -41,7 +41,6 @@ class WorkerManager:
 
     def worker_update_status(self, worker_uuid: uuid.UUID, status: WorkerStatus, ended: bool = False):
         source = str(self._processes[worker_uuid]['source'])
-        id_session = int(source)
 
         with self.flask_app.app_context():
             worker_log = ActimetryWorkerLog.get_log_for_worker(str(worker_uuid))
@@ -53,10 +52,12 @@ class WorkerManager:
                 if worker_log.worker_type == WorkerType.TYPE_IMPORTER.value:
                     source = "Session ID " + source
 
-        self.send_session_event(id_session=id_session,
-                                id_session_event_type=TeraSessionEvent.SessionEventTypes.GENERAL_INFO.value,
-                                session_event_context='ActimetryService.WorkerManager',
-                                session_event_text=f'Import status {ActimetryWorkerLog.get_status_description(status)}')
+        if worker_log.worker_type == WorkerType.TYPE_IMPORTER.value:
+            id_session = int(source)
+            self.send_session_event(id_session=id_session,
+                                    id_session_event_type=TeraSessionEvent.SessionEventTypes.GENERAL_INFO.value,
+                                    session_event_context='ActimetryService.WorkerManager',
+                                    session_event_text=f'Import status {ActimetryWorkerLog.get_status_description(status)}')
 
 
         if status != WorkerStatus.STATUS_ABORTED:
