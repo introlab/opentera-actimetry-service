@@ -134,7 +134,8 @@ class WorkerManager:
             ActimetryWorkerLog.insert(worker_log)
         else:
             # Update related worker log
-            worker_log.worker_parameters = json.dumps({'script': script, 'params': params})
+            rval['worker_uuid'] = worker_log.worker_uuid
+            # worker_log.worker_parameters = json.dumps({'script': script, 'params': params})
             worker_log.worker_status = WorkerStatus.STATUS_READY.value
             ActimetryWorkerLog.db().session.commit()
 
