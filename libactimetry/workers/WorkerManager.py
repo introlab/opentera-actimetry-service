@@ -93,6 +93,8 @@ class WorkerManager:
                         process_worker.worker_start_time = datetime.datetime.now() + datetime.timedelta(days=1)
                         process_worker.id_database = id_database
                         ActimetryWorkerLog.insert(process_worker)
+                        Globals.service.logger.log_info('ActimetryService.WorkerManager','Scheduled processing worker (Fraysse 2021)',
+                                                        str(process_worker.worker_start_time))
 
                 del self._processes[worker_uuid]
 
