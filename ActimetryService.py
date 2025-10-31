@@ -2,12 +2,16 @@ import argparse
 import sys
 import os
 
+from datetime import datetime, timedelta
+from typing import List
+
 # SQLAlchemy
 from sqlalchemy.exc import OperationalError
 
 # Twisted
 from twisted.internet import reactor, defer
 from twisted.python import log
+from twisted.internet import task
 
 # OpenTera
 from opentera.redis.RedisClient import RedisClient
@@ -28,6 +32,7 @@ from libactimetry.db.models.ActimetryAsset import ActimetryAsset
 from libactimetry.db.models.ActimetryWorkerLog import WorkerOwnerType
 from libactimetry.db.models.ActimetryDatabase import ActimetryDatabase, ActimetryDatabaseType
 from libactimetry.workers.WorkerManager import WorkerManager
+from libactimetry.db.models.ActimetryWorkerLog import WorkerStatus, WorkerType, ActimetryWorkerLog
 
 
 
@@ -45,6 +50,8 @@ class ActimetryService(ServiceOpenTeraWithAssets):
         self.upload_directory = self.verify_file_upload_directory(config_man)
         self.temp_directory = self.verify_temp_directory(config_man)
         self.databases_directory = self.verify_databases_directory(config_man)
+
+        self.workers_task = task.LoopingCall(self.process_scheduled_workers)
 
         self.init_service()
 
@@ -101,7 +108,34 @@ class ActimetryService(ServiceOpenTeraWithAssets):
         return databases_directory
 
     def init_service(self):
-        pass
+        print("ActimetryService - Initializing service...")
+
+        # We wait until we are connected to redis
+        # Every 30 minutes?
+        self.workers_task.start(20)
+
+    def shutdown_service(self):
+        print("ActimetryService - Shutting down service...")
+        self.workers_task.stop()
+
+    def process_scheduled_workers(self):
+        print("ActimetryService - process_scheduled_workers")
+        # We already are in a app_context ?
+        with flask_app.app_context():
+            # Get all scheduled workers from DB
+            scheduled_workers : List[ActimetryWorkerLog] = ActimetryWorkerLog.query.filter_by(worker_status=WorkerStatus.STATUS_PLANNED.value).all()
+
+            for scheduled_worker in scheduled_workers:
+                print(f"ActimetryService - Starting scheduled worker {scheduled_worker.worker_uuid}")
+
+                # Verify sheduled time if we can start it now
+                current_time = datetime.now()
+
+                if scheduled_worker.worker_start_time <= current_time:
+                    # Start the worker depending on type
+                    if scheduled_worker.worker_type == WorkerType.TYPE_ALGORITHM.value:
+                        # Importer worker
+                        print("ActimetryService - Starting scheduled algorithm worker")
 
     def notify_service_messages(self, pattern, channel, message):
         print("ActimetryService - notify_service_message", pattern, channel, message)
@@ -185,7 +219,7 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description="Actimetry Service")
     parser.add_argument("--enable_tests", help="Test mode for service.", default=False)
-    parser.add_argument("--conf", help="Configuration file", default="ActimetryService.json")
+    parser.add_argument("--conf", help="Configuration file", default="ActimetryService-prod.json")
     args = parser.parse_args()
 
     # Load configuration
@@ -266,6 +300,9 @@ if __name__ == "__main__":
     with flask_app.app_context():
         # Create the Service
         Globals.service = ActimetryService(Globals.config_man, service_info)
+
+        # Configure before shutdown on reactor
+        reactor.addSystemEventTrigger('before', 'shutdown', Globals.service.shutdown_service)
 
         # Start App / reactor events
         reactor.run()
