@@ -85,8 +85,8 @@ class WorkerManager:
                         process_worker.worker_owner_uuid = worker_log.worker_owner_uuid
                         process_worker.worker_owner_type = worker_log.worker_owner_type
                         # TODO: Configure specific processor and parameters to start
-                        process_worker.worker_parameters = json.dumps({'script': "Fraysse2021",
-                                                                       'script_name': "Fraysse2021Worker.py",
+                        process_worker.worker_parameters = json.dumps({'script_name': "Fraysse2021",
+                                                                       'script': "Fraysse2021Worker.py",
                                                                        'database_path': database_path,
                                                                        'params': None,
                                                                        'context': self._processes[worker_uuid]['context'] })
