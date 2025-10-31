@@ -53,13 +53,16 @@ class Fraysse2021Worker(BaseWorker):
         # Default params?
         algo_factory = Fraysse2021Factory()
 
-        params = json.loads(self._params)
-        if not params:
+
+        params = {}
+        if not self._params:
             # Default parameters if none specified
             print("Using default parameters")
-            params = {}
-            for default_param in algo_factory.params():
-                params[default_param] = default_param["default_value"]
+            default_params = algo_factory.params()
+            for param_name in default_params:
+                params[param_name] = default_params[param_name]["default_value"]
+        else:
+            params = json.loads(self._params)
         algorithm = Fraysse2021(params)
 
         for date in self.to_process:
