@@ -2,7 +2,7 @@ import argparse
 import sys
 import os
 
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List
 
 # SQLAlchemy
@@ -109,10 +109,8 @@ class ActimetryService(ServiceOpenTeraWithAssets):
 
     def init_service(self):
         print("ActimetryService - Initializing service...")
-
-        # We wait until we are connected to redis
-        # Every 30 minutes?
-        self.workers_task.start(20)
+        # Every hour
+        self.workers_task.start(60 * 60)
 
     def shutdown_service(self):
         print("ActimetryService - Shutting down service...")
@@ -126,16 +124,10 @@ class ActimetryService(ServiceOpenTeraWithAssets):
             scheduled_workers : List[ActimetryWorkerLog] = ActimetryWorkerLog.query.filter_by(worker_status=WorkerStatus.STATUS_PLANNED.value).all()
 
             for scheduled_worker in scheduled_workers:
-                print(f"ActimetryService - Starting scheduled worker {scheduled_worker.worker_uuid}")
-
-                # Verify sheduled time if we can start it now
-                current_time = datetime.now()
-
-                if scheduled_worker.worker_start_time <= current_time:
+                if scheduled_worker.worker_start_time <= datetime.now().astimezone():
                     # Start the worker depending on type
                     if scheduled_worker.worker_type == WorkerType.TYPE_ALGORITHM.value:
-                        # Importer worker
-                        print("ActimetryService - Starting scheduled algorithm worker")
+                        print(f"ActimetryService - Starting scheduled algorithm worker {scheduled_worker.worker_uuid}")
                         # Get Parameters
                         parameters = json.loads(scheduled_worker.worker_parameters)
 
